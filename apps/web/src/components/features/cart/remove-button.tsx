@@ -19,7 +19,7 @@ export function RemoveButton({ itemId, title }: { itemId: string; title: string 
       <Button
         type="submit"
         variant="ghost"
-        className="h-8 gap-1.5 px-2 text-muted-foreground hover:text-danger"
+        className="h-10 gap-1.5 px-2 text-muted-foreground hover:text-danger"
         aria-label={`Remove ${title} from cart`}
         isLoading={isPending}
         disabled={isPending}

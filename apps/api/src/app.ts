@@ -8,6 +8,7 @@ import { requestId } from './middleware/request-id.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { healthRouter } from './modules/health/health.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
+import { productsRouter } from './modules/products/products.routes.js';
 
 /**
  * App assembly is kept separate from `index.ts` (which owns the listener and process
@@ -57,6 +58,7 @@ export function createApp(): Express {
 
   const api = express.Router();
   api.use('/auth', authRouter);
+  api.use('/products', productsRouter);
   app.use('/api/v1', api);
 
   app.use(notFoundHandler);

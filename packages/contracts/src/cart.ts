@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { idSchema, minorUnitsSchema, quantitySchema } from './common.js';
-import { productSchema, variantSchema } from './product.js';
+import { idSchema, minorUnitsSchema, quantitySchema } from './common';
+import { productSchema, variantSchema } from './product';
 
 export const cartItemSchema = z.object({
   id: idSchema,

@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { idSchema } from './common.js';
-import { productSchema } from './product.js';
+import { idSchema } from './common';
+import { productSchema } from './product';
 
 export const wishlistItemSchema = z.object({
   id: idSchema,

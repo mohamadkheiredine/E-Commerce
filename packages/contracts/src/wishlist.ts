@@ -37,3 +37,13 @@ export const moveToCartPayloadSchema = z.object({
   ),
 });
 export type MoveToCartPayload = z.infer<typeof moveToCartPayloadSchema>;
+
+export const wishlistProductIdParamsSchema = z.object({
+  productId: idSchema,
+});
+
+/** API body for move-to-cart; the product comes from the path. */
+export const moveToCartBodySchema = z.object({
+  variantId: idSchema.optional(),
+});
+export type MoveToCartBody = z.infer<typeof moveToCartBodySchema>;

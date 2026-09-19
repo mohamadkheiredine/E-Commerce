@@ -10,6 +10,8 @@ import { healthRouter } from './modules/health/health.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { productsRouter } from './modules/products/products.routes.js';
 import { cartRouter } from './modules/cart/cart.routes.js';
+import { wishlistRouter } from './modules/wishlist/wishlist.routes.js';
+import { ordersRouter } from './modules/orders/orders.routes.js';
 
 /**
  * App assembly is kept separate from `index.ts` (which owns the listener and process
@@ -61,6 +63,8 @@ export function createApp(): Express {
   api.use('/auth', authRouter);
   api.use('/products', productsRouter);
   api.use('/cart', cartRouter);
+  api.use('/wishlist', wishlistRouter);
+  api.use('/orders', ordersRouter);
   app.use('/api/v1', api);
 
   app.use(notFoundHandler);

@@ -9,9 +9,9 @@
  * This package deliberately depends on nothing but zod — no React, no Express,
  * no Prisma. Anything heavier belongs in the app that needs it.
  */
-export * from './common.js';
-export * from './auth.js';
-export * from './product.js';
-export * from './cart.js';
-export * from './wishlist.js';
-export * from './order.js';
+export * from './common';
+export * from './auth';
+export * from './product';
+export * from './cart';
+export * from './wishlist';
+export * from './order';

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idSchema, minorUnitsSchema } from './common.js';
+import { idSchema, minorUnitsSchema } from './common';
 
 export const ORDER_STATUSES = ['PLACED', 'CONFIRMED', 'SHIPPED', 'CANCELLED'] as const;
 export const orderStatusSchema = z.enum(ORDER_STATUSES);

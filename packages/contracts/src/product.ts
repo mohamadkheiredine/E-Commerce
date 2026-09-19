@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idSchema, minorUnitsSchema } from './common.js';
+import { idSchema, minorUnitsSchema } from './common';
 
 /**
  * A variant is a purchasable configuration of a product — "Size: Large", "Color: Graphite".

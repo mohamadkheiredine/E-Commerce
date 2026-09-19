@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idSchema } from './common.js';
+import { idSchema } from './common';
 
 export const userSchema = z.object({
   id: idSchema,
@@ -57,5 +57,6 @@ export type RefreshResponse = z.infer<typeof refreshResponseSchema>;
 export const accessTokenClaimsSchema = z.object({
   sub: idSchema,
   email: z.email(),
+  name: z.string(),
 });
 export type AccessTokenClaims = z.infer<typeof accessTokenClaimsSchema>;

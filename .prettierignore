@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+.next
+.turbo
+coverage
+*.db
+package-lock.json
+apps/api/prisma/migrations

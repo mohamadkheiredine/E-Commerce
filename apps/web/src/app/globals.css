@@ -1,0 +1,263 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* Radix state variants, so `data-open:` reads like `hover:` */
+@custom-variant data-open (&[data-state="open"]);
+@custom-variant data-closed (&[data-state="closed"]);
+
+/*
+ * Design tokens.
+ *
+ * Tailwind v4 is configured in CSS: `@theme inline` maps utility names to the CSS
+ * variables below, and `:root` / `.dark` supply the values. There is no
+ * tailwind.config.js. Every semantic colour a component references has a definition
+ * here — a utility like `text-disabled` with no token behind it silently renders as
+ * nothing, which is exactly the class of bug this file exists to prevent.
+ */
+@theme inline {
+  --breakpoint-xs: 24rem;
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Status colours — each with a foreground so text-on-fill is always legible */
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-light: var(--destructive-light);
+  --color-danger: var(--destructive);
+  --color-danger-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-light: var(--success-light);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-light: var(--warning-light);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-disabled: var(--disabled);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.625rem;
+
+  --background: oklch(0.995 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+
+  /* Near-black primary: high contrast on product imagery, reads as "buy" without shouting */
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.965 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.965 0 0);
+  --muted-foreground: oklch(0.52 0 0);
+  --accent: oklch(0.965 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --destructive-light: oklch(0.955 0.03 20);
+  --success: oklch(0.55 0.16 150);
+  --success-foreground: oklch(0.985 0 0);
+  --success-light: oklch(0.955 0.04 150);
+  --warning: oklch(0.7 0.16 70);
+  --warning-foreground: oklch(0.2 0.03 70);
+  --warning-light: oklch(0.965 0.045 85);
+  --info: oklch(0.6 0.18 255);
+  --info-foreground: oklch(0.985 0 0);
+  --disabled: oklch(0.7 0 0);
+
+  --border: oklch(0.91 0 0);
+  --input: oklch(0.91 0 0);
+  --ring: oklch(0.6 0 0);
+
+  .btn-loading {
+    --from: #0f172a;
+    --to: #334155;
+    background-image: linear-gradient(to right, var(--from) 50%, var(--to) 50%);
+    background-size: 200% 100%;
+    animation: button-loading 60s cubic-bezier(0.1, 0.99, 0.1, 0.99) forwards;
+  }
+
+  .btn-loading--danger {
+    --from: #b91c1c;
+    --to: #dc2626;
+  }
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.19 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.19 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.145 0 0);
+  --destructive-light: oklch(0.3 0.06 20);
+  --success: oklch(0.72 0.17 150);
+  --success-foreground: oklch(0.145 0 0);
+  --success-light: oklch(0.28 0.05 150);
+  --warning: oklch(0.8 0.16 75);
+  --warning-foreground: oklch(0.2 0.03 70);
+  --warning-light: oklch(0.3 0.05 80);
+  --info: oklch(0.7 0.16 255);
+  --info-foreground: oklch(0.145 0 0);
+  --disabled: oklch(0.5 0 0);
+
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+
+  .btn-loading {
+    --from: #e1e3e7;
+    --to: #bbbbbb;
+    background-image: linear-gradient(to right, var(--from) 50%, var(--to) 50%);
+    background-size: 200% 100%;
+    animation: button-loading 60s cubic-bezier(0.1, 0.99, 0.1, 0.99) forwards;
+  }
+
+  .btn-loading--danger {
+    --from: #b91c1c;
+    --to: #dc2626;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    /* Prevent layout shift when a modal locks scrolling */
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    /* Bottom tab bar on mobile is 4rem; keep content clear of it */
+    --mobile-nav-height: 4rem;
+  }
+
+  /* Skip link: visually hidden until focused, first tab stop on every page */
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100]
+      focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground;
+  }
+}
+
+@layer utilities {
+  @keyframes dialog-enter {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-dialog-enter {
+    animation: dialog-enter 0.25s ease-out forwards;
+  }
+
+  @keyframes dialog-exit {
+    0% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+  }
+
+  .animate-dialog-exit {
+    animation: dialog-exit 0.25s ease-out forwards;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  .animate-fade-out {
+    animation: fade-out 0.2s ease-in;
+  }
+
+  /* Respect the OS setting: no motion for people who asked for none */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-dialog-enter,
+    .animate-dialog-exit,
+    .animate-fade-in,
+    .animate-fade-out,
+    .btn-loading {
+      animation: none;
+    }
+  }
+}
+
+@keyframes button-loading {
+  0% {
+    background-position: 0%;
+  }
+  100% {
+    background-position: -99%;
+  }
+}

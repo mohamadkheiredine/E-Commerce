@@ -1,0 +1,34 @@
+{
+  "name": "ecommerce",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mini e-commerce platform — Next.js storefront and Node.js API in one monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,css}\"",
+    "db:generate": "npm --workspace @ecom/api run db:generate",
+    "db:push": "npm --workspace @ecom/api run db:push",
+    "db:seed": "npm --workspace @ecom/api run db:seed",
+    "db:reset": "npm --workspace @ecom/api run db:reset",
+    "db:studio": "npm --workspace @ecom/api run db:studio"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9",
+    "prettier": "^3.9.8",
+    "turbo": "^2.11.2",
+    "typescript-eslint": "^8"
+  },
+  "packageManager": "npm@10.9.4"
+}

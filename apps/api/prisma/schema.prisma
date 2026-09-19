@@ -1,0 +1,171 @@
+// Mini e-commerce data model.
+//
+// SQLite is the datasource because this data is unambiguously relational (products
+// have variants, orders have lines, carts point at a specific variant) and checkout
+// needs a real transaction, while still being a file the reviewer already has —
+// no server, no container, no connection string to hand out.
+//
+// Moving to Postgres is a change to `provider` here, the URL in prisma.config.ts and the
+// driver adapter in src/lib/prisma.ts — nothing in the models. That portability is
+// the reason to use an ORM at all at this scale.
+
+generator client {
+  // `prisma-client-js` is deprecated as of Prisma 7 — the current generator is
+  // `prisma-client`, and it requires an explicit output path.
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  // No `url` here: Prisma 7 reads the connection URL from prisma.config.ts, and the
+  // runtime client receives it through a driver adapter (see src/lib/prisma.ts).
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+
+  refreshTokens RefreshToken[]
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  orders        Order[]
+}
+
+/// Refresh tokens are opaque and stored hashed — a database leak must not yield
+/// usable sessions. `family` groups every token descended from one login, so
+/// presenting an already-rotated token (replay) can revoke the entire lineage
+/// rather than just the one token the attacker holds.
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String
+  tokenHash    String    @unique
+  family       String
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([family])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String
+  /// Minor units (fils). Integers only — never floats for money.
+  basePrice   Int
+  imageUrl    String
+  category    String
+  /// Authoritative only for products with no variants. When variants exist the
+  /// per-variant stock wins; `availableStock()` in the service layer resolves which.
+  stock       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  variants      Variant[]
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+
+  @@index([category])
+}
+
+model Variant {
+  id         String @id @default(cuid())
+  productId  String
+  /// e.g. "Size", "Color" — the axis this variant varies along.
+  type       String
+  /// e.g. "Large", "Graphite" — the value on that axis.
+  value      String
+  /// Signed offset from the product's basePrice, in minor units.
+  priceDelta Int    @default(0)
+  stock      Int    @default(0)
+  sku        String @unique
+
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems CartItem[]
+
+  @@index([productId])
+}
+
+/// The unique constraint is what makes "change this line's variant" a real problem:
+/// switching a line to a variant already present in the cart would violate it, so
+/// the service merges the two lines and sums their quantities instead.
+///
+/// Note that SQLite treats NULLs as distinct in unique indexes, so variantless
+/// products rely on the service layer to find-and-increment rather than on the
+/// constraint alone.
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  variantId String?
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant Variant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId, variantId])
+  @@index([userId])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  userId      String
+  orderNumber String   @unique
+  status      String   @default("PLACED")
+  subtotal    Int
+  shipping    Int
+  total       Int
+  /// Set by the client once per checkout attempt. A repeated submit returns the
+  /// original order instead of placing a second one.
+  idempotencyKey String @unique
+  placedAt    DateTime @default(now())
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items OrderItem[]
+
+  @@index([userId])
+}
+
+/// Deliberately denormalised. An order is a historical record of what was agreed,
+/// not a live view of the catalogue — renaming or repricing a product tomorrow must
+/// not rewrite what a customer bought today. `productId` is kept only as a soft
+/// reference for "buy again" links, with no foreign key so catalogue cleanup can
+/// never cascade into order history.
+model OrderItem {
+  id                   String  @id @default(cuid())
+  orderId              String
+  productId            String
+  titleSnapshot        String
+  variantLabelSnapshot String?
+  unitPrice            Int
+  quantity             Int
+  lineTotal            Int
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}

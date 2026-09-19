@@ -120,7 +120,7 @@ actions/cart-actions.ts   addToCartAction(prevState, formData)
   │     └─ on failure: return { message, fields, issues }   (form re-renders with errors, JS or not)
   │  3. await addToCart(parsed.data)             ← data layer
   │     └─ on throw: return { success: false, message, issues: [handleApiError(error)] }
-  │  4. updateTag('cart')                         ← Next 16: read-your-writes, cart badge updates in the same request
+  │  4. refresh()                                 ← Next 16: re-renders the route and its layout, so the header badge updates
   │  5. return { success: true, message }         ← toast
   ▼
 data-layer/cart/server.ts   api.post('/cart/items', payload)
@@ -207,17 +207,17 @@ The seed loads 15 products, 4 of which have multiple variants, with stock delibe
 
 Run from the repository root.
 
-| Script              | What it does                                                             |
-| ------------------- | ------------------------------------------------------------------------ |
-| `npm run dev`       | both apps, with Turbopack and `tsx watch`                                |
-| `npm run build`     | production build of both (`next build`; API bundled with tsup)           |
-| `npm run lint`      | ESLint across all three packages                                         |
-| `npm run typecheck` | `tsc --noEmit` across all three (web runs `next typegen` first)          |
-| `npm run test`      | Vitest + Supertest for the API                                           |
-| `npm run format`    | Prettier                                                                 |
-| `npm run db:seed`   | apply migrations and load seed data (safe to re-run; it resets the data) |
-| `npm run db:reset`  | drop, re-migrate, re-seed                                                |
-| `npm run db:studio` | Prisma Studio                                                            |
+| Script              | What it does                                                                           |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| `npm run dev`       | both apps, with Turbopack and `tsx watch`                                              |
+| `npm run build`     | production build of both (`next build`; API bundled with tsup)                         |
+| `npm run lint`      | ESLint across all three packages                                                       |
+| `npm run typecheck` | `tsc --noEmit` across all three (web runs `next typegen` first)                        |
+| `npm run test`      | Vitest + Supertest for the API: 59 specs across auth, products, cart, wishlist, orders |
+| `npm run format`    | Prettier                                                                               |
+| `npm run db:seed`   | apply migrations and load seed data (safe to re-run; it resets the data)               |
+| `npm run db:reset`  | drop, re-migrate, re-seed                                                              |
+| `npm run db:studio` | Prisma Studio                                                                          |
 
 ## Environment
 
@@ -226,6 +226,22 @@ Both apps validate their environment with zod at boot and refuse to start with a
 `apps/api/.env` — see `.env.example`. `JWT_SECRET` must be at least 32 characters; the committed example value is for local development only.
 
 `apps/web/.env.local` — `API_URL` is server-only on purpose. It is not prefixed `NEXT_PUBLIC_` because the browser must never call the API directly.
+
+## Version control
+
+One repository, trunk-based. `main` is the integration branch and is protected by CI; each feature was built on a short-lived branch and merged with a merge commit, so `git log --graph` reads as the build order:
+
+```
+chore: scaffold monorepo …            main
+feat/auth        → login, sessions, refresh rotation with reuse detection
+feat/catalogue   → product listing and detail
+feat/cart        → cart with variant merge
+feat/wishlist-checkout → wishlist and transactional checkout
+```
+
+Monorepo rather than two repositories because the two apps share a contract (`packages/contracts`) and change together — an endpoint and its caller land in one commit and one CI run. At this size, a second repository would add a release-coordination problem without removing any coupling.
+
+Each commit message records what was built and, where it matters, what was tried first and why it changed — the grace-window bug the auth tests caught, the `revalidateTag` → `updateTag` switch — so the reasoning is in the history, not only in the docs.
 
 ## Verifying the things the brief cares about
 
@@ -239,7 +255,7 @@ Both apps validate their environment with zod at boot and refuse to start with a
 
 ## Notes on dependencies
 
-- **Next 16** renamed `middleware.ts` to `proxy.ts`, made `revalidateTag()` take a cache-life argument, and added `updateTag()` for read-your-writes. The cart uses `updateTag`; the catalogue uses `revalidateTag(…, 'max')`.
+- **Next 16** renamed `middleware.ts` to `proxy.ts`, made `revalidateTag()` take a cache-life argument, and added `updateTag()` and `refresh()`. Cart and wishlist actions call `refresh()` (their data is not cached; the layout with the badge just needs re-rendering). Checkout calls `updateTag('products')` so the buyer sees the new stock at once — `revalidateTag(…, 'max')` was tried first and, being stale-while-revalidate, showed the pre-purchase count one more time.
 - **Prisma 7** requires an explicit `output` for the generated client and moves the datasource URL to `prisma.config.ts` with a driver adapter (`@prisma/adapter-better-sqlite3` here). The `prisma` CLI's `latest` npm tag currently points at a release candidate, so both `prisma` and `@prisma/client` are pinned to `7.10.0`.
 - `npm audit` reports advisories in the Prisma **CLI's** own dependencies (`mysql2`, `deepmerge-ts`). They are dev-time only and not reachable from this API, which uses SQLite; npm's proposed fix is a downgrade to Prisma 6.
 - Product images are `picsum.photos` placeholders, seeded by slug so each product keeps the same image between reseeds.

@@ -14,7 +14,7 @@ export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
     >
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <p className="text-2xl font-semibold tracking-tight">Atlas Store</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Atlas Store</h1>
         </div>
         <LoginForm next={next} />
       </div>

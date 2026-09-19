@@ -58,7 +58,7 @@ export function QuantityControls({
         name="quantity"
         value={optimisticQuantity - 1}
         variant="ghost"
-        size="sm"
+        size="md"
         className="rounded-r-none"
         aria-label="Decrease quantity"
         disabled={isPending || optimisticQuantity <= 1}
@@ -67,7 +67,7 @@ export function QuantityControls({
       </IconButton>
       <output
         className={cn(
-          'min-w-9 text-center text-sm font-medium tabular-nums',
+          'min-w-10 text-center text-sm font-medium tabular-nums',
           isPending && 'text-muted-foreground',
         )}
         aria-live="polite"
@@ -79,7 +79,7 @@ export function QuantityControls({
         name="quantity"
         value={optimisticQuantity + 1}
         variant="ghost"
-        size="sm"
+        size="md"
         className="rounded-l-none"
         aria-label="Increase quantity"
         disabled={isPending || optimisticQuantity >= max}

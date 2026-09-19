@@ -4,14 +4,22 @@ import { useEffect } from 'react';
 import { toast } from 'sonner';
 import type { FormState } from '@/models/form-state';
 
+/**
+ * Bridges a server action's `FormState` to a toast. `message` is the title;
+ * `issues` become the bullet list — which is why FormState carries both.
+ *
+ * `successToast: false` keeps the error branch but silences success, for controls
+ * that fire constantly (a quantity stepper) where the UI already shows the result.
+ */
 export function useActionStateToast(
   state: FormState | null | undefined,
   options: {
     duration?: number;
     position?: 'top-center' | 'bottom-center' | 'top-right' | 'bottom-right';
+    successToast?: boolean;
   } = {},
 ) {
-  const { duration = 5000, position = 'top-center' } = options ?? {};
+  const { duration = 4000, position = 'top-center', successToast = true } = options;
 
   useEffect(() => {
     if (!state) return;
@@ -20,39 +28,25 @@ export function useActionStateToast(
     if (!message && !issues?.length) return;
 
     if (success) {
-      toast.success(message ?? 'Done!', {
-        duration,
-        position,
-      });
+      if (successToast) toast.success(message || 'Done', { duration, position });
       return;
     }
 
     /* error branch */
     if (issues?.length) {
-      toast.error(message ?? 'There was a problem', {
+      toast.error(message || 'There was a problem', {
         duration,
         position,
         description: (
           <ul className="ml-4 list-disc">
-            {issues.map((i) => (
-              <li key={i}>{i}</li>
+            {issues.map((issue) => (
+              <li key={issue}>{issue}</li>
             ))}
           </ul>
         ),
-        style: {
-          backgroundColor: 'var(--color-destructive-light)',
-          borderColor: 'var(--color-danger)',
-        },
       });
     } else {
-      toast.error(message || 'Something went wrong', {
-        duration,
-        position,
-        style: {
-          backgroundColor: 'var(--color-destructive-light)',
-          borderColor: 'var(--color-danger)',
-        },
-      });
+      toast.error(message || 'Something went wrong', { duration, position });
     }
-  }, [state, duration, position]);
+  }, [state, duration, position, successToast]);
 }

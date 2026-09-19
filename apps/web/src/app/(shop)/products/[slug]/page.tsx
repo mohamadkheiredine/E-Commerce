@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { AddToCartForm } from '@/components/features/cart/add-to-cart-form';
 import { ProductDetail } from '@/components/features/products/product-detail';
 import { fetchProductBySlug } from '@/data-layer/products/server';
 
@@ -16,5 +17,5 @@ export default async function ProductPage({ params }: Props) {
   const product = await fetchProductBySlug(slug);
   if (!product) notFound();
 
-  return <ProductDetail product={product} />;
+  return <ProductDetail product={product} purchase={<AddToCartForm product={product} />} />;
 }

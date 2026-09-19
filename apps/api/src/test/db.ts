@@ -19,7 +19,9 @@ export const TEST_USER = {
   name: 'Test Shopper',
 } as const;
 
-export async function createTestUser(overrides: Partial<typeof TEST_USER> = {}) {
+export async function createTestUser(
+  overrides: Partial<{ email: string; password: string; name: string }> = {},
+) {
   const data = { ...TEST_USER, ...overrides };
   return prisma.user.create({
     data: {

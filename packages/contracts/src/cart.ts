@@ -70,3 +70,23 @@ export const removeCartItemPayloadSchema = z.object({
   itemId: idSchema,
 });
 export type RemoveCartItemPayload = z.infer<typeof removeCartItemPayloadSchema>;
+
+/** Route params for the item endpoints. */
+export const cartItemIdParamsSchema = z.object({
+  id: idSchema,
+});
+
+/**
+ * The API's PATCH body: change the quantity or the variant, never both at once.
+ * The two web-side payload schemas above are the FormData-facing versions of the
+ * same operations; this is what actually crosses the wire.
+ */
+export const patchCartItemBodySchema = z.union([
+  z.object({ quantity: quantitySchema }).strict(),
+  z.object({ variantId: idSchema }).strict(),
+]);
+export type PatchCartItemBody = z.infer<typeof patchCartItemBodySchema>;
+
+/** Flat-rate shipping under the free-shipping threshold. Minor units. */
+export const SHIPPING_FLAT_RATE = 2500;
+export const FREE_SHIPPING_THRESHOLD = 50000;

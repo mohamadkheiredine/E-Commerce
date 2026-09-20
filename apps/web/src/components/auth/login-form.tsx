@@ -22,7 +22,7 @@ import { useActionStateToast } from '@/hooks/use-action-state-toast';
  * identical FormData to the identical action inside `startTransition` — required
  * whenever a form action is invoked manually rather than by the form itself.
  */
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, registered }: { next?: string; registered?: boolean }) {
   const [state, formAction, isPending] = useActionState(loginAction, {
     success: false,
     message: '',
@@ -48,7 +48,7 @@ export function LoginForm({ next }: { next?: string }) {
         <Card.Title className="text-2xl">Sign in</Card.Title>
         <Card.Description>Enter your email and password to continue.</Card.Description>
       </Card.Header>
-      <Card.Content>
+      <Card.Content className="px-4 md:px-6">
         <Form {...form}>
           <form
             ref={formRef}
@@ -64,6 +64,16 @@ export function LoginForm({ next }: { next?: string }) {
             noValidate
           >
             {next ? <input type="hidden" name="next" value={next} /> : null}
+
+            {/* Set by signupAction's redirect. Server-rendered, so it shows without JS too. */}
+            {registered ? (
+              <p
+                role="status"
+                className="rounded-md border border-success/40 bg-success-light px-3 py-2 text-sm text-success"
+              >
+                Your account is ready. Sign in to continue.
+              </p>
+            ) : null}
 
             <Form.Field
               control={form.control}

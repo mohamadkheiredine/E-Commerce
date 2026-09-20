@@ -56,8 +56,9 @@ async function issueTokenPair(user: UserRecord, family: string) {
 
 export const authService = {
   /**
-   * Creates the account and signs it in, so the caller receives the same shape as
-   * login and can set cookies without a second round trip.
+   * Creates the account. It does not sign the user in — they go through `login`
+   * like everyone else, so there is one place that issues sessions and one place
+   * that rate-limits credential checks.
    *
    * The pre-check gives a clean error in the common case; the catch handles the
    * race where two requests for the same email pass the check together and one of
@@ -73,17 +74,13 @@ export const authService = {
 
     const passwordHash = await hashPassword(input.password);
 
-    let user: UserRecord;
     try {
-      user = await authRepository.createUser({ email, name: input.name, passwordHash });
+      const user = await authRepository.createUser({ email, name: input.name, passwordHash });
+      return { user };
     } catch (error) {
       if (isUniqueViolation(error)) throw new EmailTakenError();
       throw error;
     }
-
-    const { accessToken, refreshToken } = await issueTokenPair(user, newTokenFamily());
-
-    return { user, accessToken, refreshToken };
   },
 
   async login(email: string, password: string): Promise<LoginResponse> {
@@ -99,8 +96,8 @@ export const authService = {
 
     return {
       user: { id: user.id, email: user.email, name: user.name },
-      accessToken,
-      refreshToken,
+      access_token: accessToken,
+      refresh_token: refreshToken,
     };
   },
 
@@ -151,7 +148,7 @@ export const authService = {
       await authRepository.revokeRefreshToken(record.id, next.record.id);
     }
 
-    return { accessToken: next.accessToken, refreshToken: next.refreshToken };
+    return { access_token: next.accessToken, refresh_token: next.refreshToken };
   },
 
   /**

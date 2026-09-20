@@ -26,6 +26,12 @@ docs/               Hand-written by the project author. Do not generate content 
 ## Conventions that matter
 
 - Money is an integer count of minor units everywhere except `formatMoney()`.
+- Wire and database names are snake_case (`base_price`, `access_token`); code is
+  camelCase. On the API, Prisma `@map` does the translation and the `to*Dto` mappers
+  emit snake_case. On the web, only `serializers/` may touch a snake_case key —
+  `deserialize*` for responses, `serialize*` for request bodies. Three schemas per
+  mutation in `@ecom/contracts`: `*FormSchema` (RHF), `*PayloadSchema` (FormData),
+  `*BodySchema` (wire).
 - Every mutation is a real `<form>` posting to a server action, then progressively
   enhanced. Do not add a mutation that only works with JavaScript on.
 - Server actions return `FormState` (`apps/web/src/models/form-state.ts`) and follow

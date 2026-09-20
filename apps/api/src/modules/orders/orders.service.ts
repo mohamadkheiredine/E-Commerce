@@ -11,21 +11,21 @@ import { ordersRepository, type OrderRecord } from './orders.repository.js';
 function toOrderDto(order: OrderRecord): OrderDto {
   return {
     id: order.id,
-    orderNumber: order.orderNumber,
+    order_number: order.orderNumber,
     status: orderStatusSchema.parse(order.status),
     items: order.items.map((item) => ({
       id: item.id,
-      productId: item.productId,
-      titleSnapshot: item.titleSnapshot,
-      variantLabelSnapshot: item.variantLabelSnapshot,
-      unitPrice: item.unitPrice,
+      product_id: item.productId,
+      title_snapshot: item.titleSnapshot,
+      variant_label_snapshot: item.variantLabelSnapshot,
+      unit_price: item.unitPrice,
       quantity: item.quantity,
-      lineTotal: item.lineTotal,
+      line_total: item.lineTotal,
     })),
     subtotal: order.subtotal,
     shipping: order.shipping,
     total: order.total,
-    placedAt: order.placedAt.toISOString(),
+    placed_at: order.placedAt.toISOString(),
   };
 }
 

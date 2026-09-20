@@ -10,7 +10,11 @@ import {
 import { z } from 'zod';
 import { getUserOrRedirect } from '@/lib/auth/get-user-or-redirect';
 import type { Wishlist } from '@/models/wishlist/read';
-import { deserializeWishlist } from '@/serializers/wishlist';
+import {
+  deserializeWishlist,
+  serializeAddToWishlistBody,
+  serializeMoveToCartBody,
+} from '@/serializers/wishlist';
 
 /** Uncached for the same reason the cart is: user-scoped and mutated on every click. */
 export const fetchWishlist = cache(async (): Promise<Wishlist> => {
@@ -21,7 +25,7 @@ export const fetchWishlist = cache(async (): Promise<Wishlist> => {
 
 export async function addToWishlist(payload: AddToWishlistPayload): Promise<Wishlist> {
   const { api } = await getUserOrRedirect();
-  const dto = await api.post<unknown>('/wishlist/items', payload);
+  const dto = await api.post<unknown>('/wishlist/items', serializeAddToWishlistBody(payload));
   return deserializeWishlist(wishlistSchema.parse(dto));
 }
 
@@ -37,7 +41,7 @@ export async function moveWishlistItemToCart(payload: MoveToCartPayload): Promis
   const { api } = await getUserOrRedirect();
   const dto = await api.post<unknown>(
     `/wishlist/items/${encodeURIComponent(payload.productId)}/move-to-cart`,
-    payload.variantId ? { variantId: payload.variantId } : {},
+    serializeMoveToCartBody(payload),
   );
   return deserializeWishlist(moveResultSchema.parse(dto).wishlist);
 }

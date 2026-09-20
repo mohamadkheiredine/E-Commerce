@@ -8,6 +8,13 @@
 // Moving to Postgres is a change to `provider` here, the URL in prisma.config.ts and the
 // driver adapter in src/lib/prisma.ts — nothing in the models. That portability is
 // the reason to use an ORM at all at this scale.
+//
+// Naming: tables and columns are snake_case (`cart_items.variant_id`), the SQL
+// convention, via `@map`/`@@map`. Model fields stay camelCase so the TypeScript that
+// touches Prisma reads as TypeScript. The API's DTO mappers emit the snake_case
+// shape on the wire — the same names a reviewer sees in the database — and the web
+// app's serializers turn that into camelCase view models. One translation per
+// boundary, each in the place that owns it.
 
 generator client {
   // `prisma-client-js` is deprecated as of Prisma 7 — the current generator is
@@ -25,14 +32,16 @@ datasource db {
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
-  passwordHash String
+  passwordHash String   @map("password_hash")
   name         String
-  createdAt    DateTime @default(now())
+  createdAt    DateTime @default(now()) @map("created_at")
 
   refreshTokens RefreshToken[]
   cartItems     CartItem[]
   wishlistItems WishlistItem[]
   orders        Order[]
+
+  @@map("users")
 }
 
 /// Refresh tokens are opaque and stored hashed — a database leak must not yield
@@ -41,18 +50,19 @@ model User {
 /// rather than just the one token the attacker holds.
 model RefreshToken {
   id           String    @id @default(cuid())
-  userId       String
-  tokenHash    String    @unique
+  userId       String    @map("user_id")
+  tokenHash    String    @unique @map("token_hash")
   family       String
-  expiresAt    DateTime
-  revokedAt    DateTime?
-  replacedById String?
-  createdAt    DateTime  @default(now())
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @map("replaced_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([family])
+  @@map("refresh_tokens")
 }
 
 model Product {
@@ -61,30 +71,31 @@ model Product {
   title       String
   description String
   /// Minor units (fils). Integers only — never floats for money.
-  basePrice   Int
-  imageUrl    String
+  basePrice   Int      @map("base_price")
+  imageUrl    String   @map("image_url")
   category    String
   /// Authoritative only for products with no variants. When variants exist the
   /// per-variant stock wins; `availableStock()` in the service layer resolves which.
   stock       Int      @default(0)
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
 
   variants      Variant[]
   cartItems     CartItem[]
   wishlistItems WishlistItem[]
 
   @@index([category])
+  @@map("products")
 }
 
 model Variant {
   id         String @id @default(cuid())
-  productId  String
+  productId  String @map("product_id")
   /// e.g. "Size", "Color" — the axis this variant varies along.
   type       String
   /// e.g. "Large", "Graphite" — the value on that axis.
   value      String
   /// Signed offset from the product's basePrice, in minor units.
-  priceDelta Int    @default(0)
+  priceDelta Int    @default(0) @map("price_delta")
   stock      Int    @default(0)
   sku        String @unique
 
@@ -92,6 +103,7 @@ model Variant {
   cartItems CartItem[]
 
   @@index([productId])
+  @@map("variants")
 }
 
 /// The unique constraint is what makes "change this line's variant" a real problem:
@@ -103,12 +115,12 @@ model Variant {
 /// constraint alone.
 model CartItem {
   id        String   @id @default(cuid())
-  userId    String
-  productId String
-  variantId String?
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  variantId String?  @map("variant_id")
   quantity  Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -116,38 +128,41 @@ model CartItem {
 
   @@unique([userId, productId, variantId])
   @@index([userId])
+  @@map("cart_items")
 }
 
 model WishlistItem {
   id        String   @id @default(cuid())
-  userId    String
-  productId String
-  createdAt DateTime @default(now())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
   @@index([userId])
+  @@map("wishlist_items")
 }
 
 model Order {
-  id          String   @id @default(cuid())
-  userId      String
-  orderNumber String   @unique
-  status      String   @default("PLACED")
-  subtotal    Int
-  shipping    Int
-  total       Int
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  orderNumber    String   @unique @map("order_number")
+  status         String   @default("PLACED")
+  subtotal       Int
+  shipping       Int
+  total          Int
   /// Set by the client once per checkout attempt. A repeated submit returns the
   /// original order instead of placing a second one.
-  idempotencyKey String @unique
-  placedAt    DateTime @default(now())
+  idempotencyKey String   @unique @map("idempotency_key")
+  placedAt       DateTime @default(now()) @map("placed_at")
 
   user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   items OrderItem[]
 
   @@index([userId])
+  @@map("orders")
 }
 
 /// Deliberately denormalised. An order is a historical record of what was agreed,
@@ -157,15 +172,16 @@ model Order {
 /// never cascade into order history.
 model OrderItem {
   id                   String  @id @default(cuid())
-  orderId              String
-  productId            String
-  titleSnapshot        String
-  variantLabelSnapshot String?
-  unitPrice            Int
+  orderId              String  @map("order_id")
+  productId            String  @map("product_id")
+  titleSnapshot        String  @map("title_snapshot")
+  variantLabelSnapshot String? @map("variant_label_snapshot")
+  unitPrice            Int     @map("unit_price")
   quantity             Int
-  lineTotal            Int
+  lineTotal            Int     @map("line_total")
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
+  @@map("order_items")
 }

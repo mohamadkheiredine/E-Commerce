@@ -6,6 +6,7 @@ export const metadata: Metadata = { title: 'Sign in' };
 export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
   const params = await searchParams;
   const next = typeof params.next === 'string' ? params.next : undefined;
+  const registered = params.registered === '1';
 
   return (
     <main
@@ -16,7 +17,7 @@ export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">Atlas Store</h1>
         </div>
-        <LoginForm next={next} />
+        <LoginForm next={next} registered={registered} />
       </div>
     </main>
   );

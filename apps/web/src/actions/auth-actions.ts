@@ -34,10 +34,17 @@ function echoFields(formData: Record<string, FormDataEntryValue>): Record<string
  * Parses with the *form* schema, not the payload schema, on purpose: the password
  * confirmation must be enforced here for the no-JavaScript path, and the API has no
  * business knowing a confirmation field exists. Only the payload fields go over the wire.
+ *
+ * On success the new account is sent to the login page rather than signed in. The
+ * page shows a "created, now sign in" notice via `?registered=1`, and `?next=` is
+ * carried across so the eventual login still lands where the visitor was going.
  */
 export async function signupAction(_: FormState, data: FormData): Promise<FormState> {
   const formData = Object.fromEntries(data);
-  const next = safeNextPath(formData.next);
+  const loginUrl = new URLSearchParams({ registered: '1' });
+  if (typeof formData.next === 'string' && formData.next) {
+    loginUrl.set('next', safeNextPath(formData.next));
+  }
 
   try {
     const parsed = signupFormSchema.safeParse(formData);
@@ -51,8 +58,7 @@ export async function signupAction(_: FormState, data: FormData): Promise<FormSt
     }
 
     const { name, email, password } = parsed.data;
-    const session = await signup({ name, email, password });
-    await setSessionCookies(session);
+    await signup({ name, email, password });
   } catch (error) {
     console.error('Error creating account:', error);
     return {
@@ -63,7 +69,7 @@ export async function signupAction(_: FormState, data: FormData): Promise<FormSt
     };
   }
 
-  redirect(next);
+  redirect(`/login?${loginUrl.toString()}`);
 }
 
 export async function loginAction(_: FormState, data: FormData): Promise<FormState> {

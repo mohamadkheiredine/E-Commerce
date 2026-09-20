@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import type { AddToWishlistPayload, MoveToCartBody } from '@ecom/contracts';
+import type { AddToWishlistBody, MoveToCartBody } from '@ecom/contracts';
 import { requireUser } from '../../middleware/authenticate.js';
 import { validated } from '../../middleware/validate.js';
 import { wishlistService } from './wishlist.service.js';
@@ -12,8 +12,8 @@ export const wishlistController = {
 
   async add(req: Request, res: Response): Promise<void> {
     const user = requireUser(req);
-    const { productId } = validated<AddToWishlistPayload>(req);
-    res.status(201).json({ data: await wishlistService.add(user.id, productId) });
+    const { product_id } = validated<AddToWishlistBody>(req);
+    res.status(201).json({ data: await wishlistService.add(user.id, product_id) });
   },
 
   async remove(req: Request, res: Response): Promise<void> {
@@ -25,7 +25,7 @@ export const wishlistController = {
   async moveToCart(req: Request, res: Response): Promise<void> {
     const user = requireUser(req);
     const { productId } = validated<{ productId: string }>(req, 'params');
-    const { variantId } = validated<MoveToCartBody>(req);
-    res.json({ data: await wishlistService.moveToCart(user.id, productId, variantId) });
+    const { variant_id } = validated<MoveToCartBody>(req);
+    res.json({ data: await wishlistService.moveToCart(user.id, productId, variant_id) });
   },
 };

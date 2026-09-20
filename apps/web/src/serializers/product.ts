@@ -6,16 +6,19 @@ import { formatMoney } from '@/lib/utils/money';
 export const LOW_STOCK_THRESHOLD = 5;
 
 /**
- * API DTO → view model.
+ * Wire DTO → view model.
  *
- * In the codebase this mirrors, the serializer layer turned snake_case rows into
- * camelCase domain objects. Here the API already speaks camelCase, so the layer's
- * job shifts to what it was always partly doing: deriving the fields the UI needs
- * (`inStock`, `displayPrice`, "from" pricing) in one place, so no component and no
- * page reimplements the rule for what "low stock" means.
+ * The API speaks snake_case — the same names as the database columns — and the UI
+ * speaks camelCase. This layer is the one place that knows both, exactly as the
+ * serializers do in the codebase this project mirrors. It also derives the fields
+ * the UI needs (`inStock`, `displayPrice`, "from" pricing) here, so no component
+ * and no page reimplements the rule for what "low stock" means.
+ *
+ * `deserialize*` reads the wire; `serialize*` (in the cart and wishlist
+ * serializers) writes it. Nothing outside `serializers/` touches a snake_case key.
  */
 export function deserializeVariant(variant: VariantDto, basePrice: number): ProductVariant {
-  const price = basePrice + variant.priceDelta;
+  const price = basePrice + variant.price_delta;
   return {
     id: variant.id,
     type: variant.type,
@@ -31,12 +34,12 @@ export function deserializeVariant(variant: VariantDto, basePrice: number): Prod
 
 export function deserializeProduct(dto: ProductDto): Product {
   const hasVariants = dto.variants.length > 0;
-  const variants = dto.variants.map((v) => deserializeVariant(v, dto.basePrice));
+  const variants = dto.variants.map((v) => deserializeVariant(v, dto.base_price));
 
   const totalStock = hasVariants ? variants.reduce((sum, v) => sum + v.stock, 0) : dto.stock;
 
   const prices = variants.filter((v) => v.inStock).map((v) => v.price);
-  const minPrice = prices.length ? Math.min(...prices) : dto.basePrice;
+  const minPrice = prices.length ? Math.min(...prices) : dto.base_price;
   const pricesVary = hasVariants && new Set(variants.map((v) => v.price)).size > 1;
 
   return {
@@ -44,10 +47,10 @@ export function deserializeProduct(dto: ProductDto): Product {
     slug: dto.slug,
     title: dto.title,
     description: dto.description,
-    imageUrl: dto.imageUrl,
+    imageUrl: dto.image_url,
     category: dto.category,
-    basePrice: dto.basePrice,
-    displayPrice: formatMoney(dto.basePrice),
+    basePrice: dto.base_price,
+    displayPrice: formatMoney(dto.base_price),
     displayPriceFrom: pricesVary ? formatMoney(minPrice) : null,
     hasVariants,
     variantType: hasVariants ? (dto.variants[0]?.type ?? null) : null,

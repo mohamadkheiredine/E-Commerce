@@ -21,23 +21,23 @@ const dateFormatter = new Intl.DateTimeFormat('en-AE', {
 export function deserializeOrderLine(item: OrderItemDto): OrderLine {
   return {
     id: item.id,
-    productId: item.productId,
-    title: item.titleSnapshot,
-    variantLabel: item.variantLabelSnapshot,
+    productId: item.product_id,
+    title: item.title_snapshot,
+    variantLabel: item.variant_label_snapshot,
     quantity: item.quantity,
-    unitPrice: item.unitPrice,
-    displayUnitPrice: formatMoney(item.unitPrice),
-    lineTotal: item.lineTotal,
-    displayLineTotal: formatMoney(item.lineTotal),
+    unitPrice: item.unit_price,
+    displayUnitPrice: formatMoney(item.unit_price),
+    lineTotal: item.line_total,
+    displayLineTotal: formatMoney(item.line_total),
   };
 }
 
 export function deserializeOrder(dto: OrderDto): Order {
   const lines = dto.items.map(deserializeOrderLine);
-  const placedAt = new Date(dto.placedAt);
+  const placedAt = new Date(dto.placed_at);
   return {
     id: dto.id,
-    orderNumber: dto.orderNumber,
+    orderNumber: dto.order_number,
     status: dto.status,
     displayStatus: STATUS_LABELS[dto.status],
     lines,

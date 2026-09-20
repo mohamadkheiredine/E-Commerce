@@ -51,17 +51,17 @@ docs/                 architecture notes written by the author — see the asses
 
 ### `apps/web/src`
 
-| Folder         | Role                                                                                                                                                                                |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app/`         | Routes. `(auth)/login` is public; everything under `(shop)/` requires a session. Every route folder has `page.tsx`, `loading.tsx` and `error.tsx`.                                  |
-| `actions/`     | Server actions, one file per entity. All return `FormState`. This is the only place the browser's input meets the server.                                                           |
-| `data-layer/`  | Typed reads and writes against the API, one folder per entity. Pages and actions call these; nothing else calls the API directly.                                                   |
-| `serializers/` | API DTO → view model. Computes display fields (`lineTotal`, `variantLabel`, `isLowStock`, formatted prices) in one place so components stay dumb.                                   |
-| `models/`      | `FormState` and app-side zod schemas that are not part of the wire contract.                                                                                                        |
-| `components/`  | `shared/` are the design-system primitives (button, card, dialog, form…). `features/` are per-entity UI. `layout/` is chrome (header, mobile nav, error card).                      |
-| `lib/api/`     | The HTTP client that attaches the access token and refreshes it on 401. `handle-api-error.ts` maps API error codes to user-facing copy.                                             |
-| `lib/auth/`    | Cookie-backed session helpers and `getUserOrRedirect()`, which every protected page and data-layer function calls.                                                                  |
-| `proxy.ts`     | Next 16's middleware (renamed from `middleware.ts`). Redirects unauthenticated requests to `/login?next=…` and refreshes near-expiry sessions. UX layer, not the security boundary. |
+| Folder         | Role                                                                                                                                                                                                                                                                                                                |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/`         | Routes. `(auth)/login` is public; everything under `(shop)/` requires a session. Every route folder has `page.tsx`, `loading.tsx` and `error.tsx`.                                                                                                                                                                  |
+| `actions/`     | Server actions, one file per entity. All return `FormState`. This is the only place the browser's input meets the server.                                                                                                                                                                                           |
+| `data-layer/`  | Typed reads and writes against the API, one folder per entity. Pages and actions call these; nothing else calls the API directly.                                                                                                                                                                                   |
+| `serializers/` | The only code that knows both the wire shape and the view-model shape. `deserialize*` turns snake_case DTOs (`base_price`) into camelCase view models with display fields (`lineTotal`, `variantLabel`, `isLowStock`, formatted prices); `serialize*` turns camelCase form payloads into snake_case request bodies. |
+| `models/`      | `FormState` and app-side zod schemas that are not part of the wire contract.                                                                                                                                                                                                                                        |
+| `components/`  | `shared/` are the design-system primitives (button, card, input, form…). `features/` are per-entity UI. `layout/` is chrome (header, mobile nav, error card).                                                                                                                                                       |
+| `lib/api/`     | The HTTP client that attaches the access token and refreshes it on 401. `handle-api-error.ts` maps API error codes to user-facing copy.                                                                                                                                                                             |
+| `lib/auth/`    | Cookie-backed session helpers and `getUserOrRedirect()`, which every protected page and data-layer function calls.                                                                                                                                                                                                  |
+| `proxy.ts`     | Next 16's middleware (renamed from `middleware.ts`). Redirects unauthenticated requests to `/login?next=…` and refreshes near-expiry sessions. UX layer, not the security boundary.                                                                                                                                 |
 
 ### `apps/api/src`
 
@@ -123,9 +123,9 @@ actions/cart-actions.ts   addToCartAction(prevState, formData)
   │  4. refresh()                                 ← Next 16: re-renders the route and its layout, so the header badge updates
   │  5. return { success: true, message }         ← toast
   ▼
-data-layer/cart/server.ts   api.post('/cart/items', payload)
+data-layer/cart/server.ts   api.post('/cart/items', serializeAddToCartBody(payload))   ← { productId } → { product_id }
   ▼  HTTP
-apps/api  validate(addToCartPayloadSchema) → cart.controller → cart.service
+apps/api  validate(addToCartBodySchema) → cart.controller → cart.service
               │  resolves stock for that product/variant
               │  rejects: VARIANT_REQUIRED, OUT_OF_STOCK, INSUFFICIENT_STOCK
               │  finds an existing line for (user, product, variant) and increments, else inserts
@@ -133,7 +133,7 @@ apps/api  validate(addToCartPayloadSchema) → cart.controller → cart.service
           cart.repository → Prisma
 ```
 
-The same shape repeats for every mutation: quantity change, variant change, remove, wishlist toggle, place order. Variant change is the notable one — switching a line to a variant that is _already_ in the cart merges the two lines rather than colliding with the `unique(userId, productId, variantId)` constraint.
+The same shape repeats for every mutation: quantity change, variant change, remove, wishlist toggle, place order. Variant change is the notable one — switching a line to a variant that is _already_ in the cart merges the two lines rather than colliding with the `unique(user_id, product_id, variant_id)` constraint.
 
 ### Signing in
 
@@ -142,7 +142,7 @@ The same shape repeats for every mutation: quantity change, variant change, remo
   ▼
 actions/auth-actions.ts   loginPayloadSchema.safeParse → api.post('/auth/login')
   │
-  ◀  { user, accessToken, refreshToken }
+  ◀  { user, access_token, refresh_token }   → serializers/auth.ts → { user, accessToken, refreshToken }
   │
   │  cookies().set('access_token',  …, { httpOnly, secure, sameSite: 'lax',    path: '/' })
   │  cookies().set('refresh_token', …, { httpOnly, secure, sameSite: 'strict', path: '/' })
@@ -152,7 +152,7 @@ redirect(searchParams.next ?? '/products')
 
 Tokens are set by the Next.js server and read only by the Next.js server. Nothing under `apps/web` reads `localStorage` or a JavaScript-visible cookie for auth, so an XSS has nothing to steal. The browser never calls the API at all, which is why the API's CORS allow-list is a single origin.
 
-Sign-up (`/signup` → `signupAction` → `POST /auth/signup`) is the same path with one difference: the server action parses the form with `signupFormSchema`, which includes the password confirmation, and forwards only `signupPayloadSchema`'s fields to the API. The API responds with a session, so a new account lands in the catalogue already signed in.
+Sign-up (`/signup` → `signupAction` → `POST /auth/signup`) follows the same shape with two differences: the server action parses the form with `signupFormSchema`, which includes the password confirmation, and forwards only `signupPayloadSchema`'s fields to the API; and the API returns the created user without a session. The action then redirects to `/login?registered=1` (carrying `?next=` along), so there is exactly one code path that issues tokens.
 
 ## Authentication design
 
@@ -167,41 +167,42 @@ Sign-up (`/signup` → `signupAction` → `POST /auth/signup`) is the same path 
 
 Base path `/api/v1`. Every response is an envelope: `{ data }` on success, `{ error: { code, message, details? }, requestId }` on failure. The `code` is a stable string from `packages/contracts` and is what the web app maps to user-facing copy.
 
-| Method | Path                                      | Auth | Notes                                                    |
-| ------ | ----------------------------------------- | ---- | -------------------------------------------------------- |
-| POST   | `/auth/signup`                            |      | rate-limited per IP; creates the user, returns a session |
-| POST   | `/auth/login`                             |      | rate-limited; returns user + token pair                  |
-| POST   | `/auth/refresh`                           |      | rotates the pair; reuse revokes the family               |
-| POST   | `/auth/logout`                            | ✓    | revokes the presented refresh token's family             |
-| GET    | `/auth/me`                                | ✓    |                                                          |
-| GET    | `/products`                               | ✓    | all 15, with variants                                    |
-| GET    | `/products/:slug`                         | ✓    |                                                          |
-| GET    | `/cart`                                   | ✓    | lines with resolved unit price, line total, stock        |
-| POST   | `/cart/items`                             | ✓    | `{ productId, variantId?, quantity }`; merges duplicates |
-| PATCH  | `/cart/items/:id`                         | ✓    | `{ quantity }` or `{ variantId }`; variant change merges |
-| DELETE | `/cart/items/:id`                         | ✓    |                                                          |
-| GET    | `/wishlist`                               | ✓    |                                                          |
-| POST   | `/wishlist/items`                         | ✓    | `{ productId }`; idempotent                              |
-| DELETE | `/wishlist/items/:productId`              | ✓    |                                                          |
-| POST   | `/wishlist/items/:productId/move-to-cart` | ✓    | one operation, not add-then-remove                       |
-| POST   | `/orders`                                 | ✓    | `Idempotency-Key` header; transactional stock decrement  |
-| GET    | `/orders/:orderNumber`                    | ✓    |                                                          |
-| GET    | `/health` (no prefix)                     |      | checks the database, not just the process                |
+| Method | Path                                      | Auth | Notes                                                      |
+| ------ | ----------------------------------------- | ---- | ---------------------------------------------------------- |
+| POST   | `/auth/signup`                            |      | rate-limited per IP; creates the user, returns a session   |
+| POST   | `/auth/login`                             |      | rate-limited; returns user + token pair                    |
+| POST   | `/auth/refresh`                           |      | rotates the pair; reuse revokes the family                 |
+| POST   | `/auth/logout`                            | ✓    | revokes the presented refresh token's family               |
+| GET    | `/auth/me`                                | ✓    |                                                            |
+| GET    | `/products`                               | ✓    | all 15, with variants                                      |
+| GET    | `/products/:slug`                         | ✓    |                                                            |
+| GET    | `/cart`                                   | ✓    | lines with resolved unit price, line total, stock          |
+| POST   | `/cart/items`                             | ✓    | `{ product_id, variant_id?, quantity }`; merges duplicates |
+| PATCH  | `/cart/items/:id`                         | ✓    | `{ quantity }` or `{ variant_id }`; variant change merges  |
+| DELETE | `/cart/items/:id`                         | ✓    |                                                            |
+| GET    | `/wishlist`                               | ✓    |                                                            |
+| POST   | `/wishlist/items`                         | ✓    | `{ product_id }`; idempotent                               |
+| DELETE | `/wishlist/items/:productId`              | ✓    |                                                            |
+| POST   | `/wishlist/items/:productId/move-to-cart` | ✓    | one operation, not add-then-remove                         |
+| POST   | `/orders`                                 | ✓    | `Idempotency-Key` header; transactional stock decrement    |
+| GET    | `/orders/:orderNumber`                    | ✓    |                                                            |
+| GET    | `/health` (no prefix)                     |      | checks the database, not just the process                  |
 
 ## Data model
 
 ```
-User ─┬─ RefreshToken   (tokenHash, family, expiresAt, revokedAt)
-      ├─ CartItem       (productId, variantId?, quantity)   unique(userId, productId, variantId)
-      ├─ WishlistItem   (productId)                         unique(userId, productId)
-      └─ Order ─── OrderItem  (titleSnapshot, variantLabelSnapshot, unitPrice, quantity, lineTotal)
+User ─┬─ RefreshToken   (token_hash, family, expires_at, revoked_at)
+      ├─ CartItem       (product_id, variant_id?, quantity)   unique(user_id, product_id, variant_id)
+      ├─ WishlistItem   (product_id)                         unique(user_id, product_id)
+      └─ Order ─── OrderItem  (title_snapshot, variant_label_snapshot, unit_price, quantity, line_total)
 
-Product ─── Variant  (type, value, priceDelta, stock, sku)
+Product ─── Variant  (type, value, price_delta, stock, sku)
 ```
 
+- **Naming is snake_case on disk and on the wire, camelCase in code.** Tables and columns are `cart_items.variant_id` via Prisma `@map`; API responses and request bodies use the same names (`base_price`, `access_token`); Prisma maps them to camelCase for the API's TypeScript, and the web app's `serializers/` map them for the UI. Each boundary translates once, in the code that owns it.
 - **Money is an integer count of minor units** (fils) everywhere — database, API, business logic. It becomes a string once, in `formatMoney()`.
 - Products without variants keep stock on the product row; products with variants keep it per variant. `availableStock()` in the service resolves which, so no caller branches on it.
-- **Order lines are snapshots.** Renaming or repricing a product tomorrow must not change what a customer bought today. `OrderItem.productId` is a soft reference with no foreign key.
+- **Order lines are snapshots.** Renaming or repricing a product tomorrow must not change what a customer bought today. `order_items.product_id` is a soft reference with no foreign key.
 - Checkout runs in one transaction: re-check stock, decrement, create the order and lines, clear the cart. All or nothing. The `Idempotency-Key` makes a double-submitted checkout return the original order.
 
 The seed loads 15 products, 4 of which have multiple variants, with stock deliberately uneven (several at zero, a few in low single digits) so out-of-stock, low-stock and quantity-clamping states are all reachable without editing the database.

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  addToCartPayloadSchema,
+  addToCartBodySchema,
   cartItemIdParamsSchema,
   patchCartItemBodySchema,
 } from '@ecom/contracts';
@@ -13,7 +13,7 @@ export const cartRouter: Router = Router();
 cartRouter.use(authenticate);
 
 cartRouter.get('/', cartController.get);
-cartRouter.post('/items', validate(addToCartPayloadSchema), cartController.addItem);
+cartRouter.post('/items', validate(addToCartBodySchema), cartController.addItem);
 cartRouter.patch(
   '/items/:id',
   validate(cartItemIdParamsSchema, 'params'),

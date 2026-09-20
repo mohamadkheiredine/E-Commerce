@@ -51,7 +51,7 @@ export function SignupForm({ next }: { next?: string }) {
         <Card.Title className="text-2xl">Create an account</Card.Title>
         <Card.Description>A name, an email and a password is all it takes.</Card.Description>
       </Card.Header>
-      <Card.Content>
+      <Card.Content className="px-4 md:px-6">
         <Form {...form}>
           <form
             ref={formRef}

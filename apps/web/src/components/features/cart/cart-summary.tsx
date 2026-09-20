@@ -14,7 +14,7 @@ export function CartSummary({ cart }: { cart: Cart }) {
       <Card.Header>
         <Card.Title>Order summary</Card.Title>
       </Card.Header>
-      <Card.Content>
+      <Card.Content className="px-4 md:px-6">
         <dl className="space-y-2 text-sm">
           <div className="flex justify-between">
             <dt className="text-muted-foreground">

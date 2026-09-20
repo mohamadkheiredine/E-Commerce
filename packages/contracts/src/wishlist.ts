@@ -5,13 +5,13 @@ import { productSchema } from './product';
 export const wishlistItemSchema = z.object({
   id: idSchema,
   product: productSchema,
-  addedAt: z.string(),
+  added_at: z.string(),
 });
 export type WishlistItemDto = z.infer<typeof wishlistItemSchema>;
 
 export const wishlistSchema = z.object({
   items: z.array(wishlistItemSchema),
-  itemCount: z.number().int().nonnegative(),
+  item_count: z.number().int().nonnegative(),
 });
 export type WishlistDto = z.infer<typeof wishlistSchema>;
 
@@ -19,6 +19,9 @@ export const addToWishlistPayloadSchema = z.object({
   productId: idSchema,
 });
 export type AddToWishlistPayload = z.infer<typeof addToWishlistPayloadSchema>;
+
+export const addToWishlistBodySchema = z.object({ product_id: idSchema }).strict();
+export type AddToWishlistBody = z.infer<typeof addToWishlistBodySchema>;
 
 export const removeFromWishlistPayloadSchema = z.object({
   productId: idSchema,
@@ -43,7 +46,5 @@ export const wishlistProductIdParamsSchema = z.object({
 });
 
 /** API body for move-to-cart; the product comes from the path. */
-export const moveToCartBodySchema = z.object({
-  variantId: idSchema.optional(),
-});
+export const moveToCartBodySchema = z.object({ variant_id: idSchema.optional() }).strict();
 export type MoveToCartBody = z.infer<typeof moveToCartBodySchema>;

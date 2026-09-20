@@ -7,6 +7,7 @@ import {
   decodeSession,
   refreshCookieOptions,
 } from '@/lib/auth/session';
+import { deserializeTokenPair, serializeRefreshBody } from '@/serializers/auth';
 
 /** Paths reachable without a session. Everything else is gated. */
 const PUBLIC_PATHS = ['/login', '/signup'];
@@ -29,7 +30,7 @@ async function exchangeRefreshToken(refreshToken: string) {
   const response = await fetch(`${process.env.API_URL}/auth/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ refreshToken }),
+    body: JSON.stringify(serializeRefreshBody(refreshToken)),
     signal: AbortSignal.timeout(5_000),
     cache: 'no-store',
   }).catch(() => null);
@@ -38,7 +39,7 @@ async function exchangeRefreshToken(refreshToken: string) {
 
   const body = (await response.json().catch(() => null)) as { data?: unknown } | null;
   const parsed = refreshResponseSchema.safeParse(body?.data);
-  return parsed.success ? parsed.data : null;
+  return parsed.success ? deserializeTokenPair(parsed.data) : null;
 }
 
 /**

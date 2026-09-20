@@ -10,5 +10,5 @@ export async function loginAs(email: string, password: string) {
   if (res.status !== 200) {
     throw new Error(`loginAs failed: ${res.status} ${JSON.stringify(res.body)}`);
   }
-  return res.body.data as { accessToken: string; refreshToken: string; user: { id: string } };
+  return res.body.data as { access_token: string; refresh_token: string; user: { id: string } };
 }

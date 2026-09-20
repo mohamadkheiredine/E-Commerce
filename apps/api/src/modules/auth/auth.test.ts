@@ -12,21 +12,17 @@ beforeEach(async () => {
 describe('POST /api/v1/auth/signup', () => {
   const NEW_USER = { name: 'New Shopper', email: 'new@shop.test', password: 'AnotherHorse2!' };
 
-  it('creates the account and returns a signed-in session', async () => {
+  it('creates the account and returns the user, without issuing a session', async () => {
     const res = await api().post('/api/v1/auth/signup').send(NEW_USER);
 
     expect(res.status).toBe(201);
     expect(res.body.data.user).toMatchObject({ email: NEW_USER.email, name: NEW_USER.name });
     expect(res.body.data.user).not.toHaveProperty('passwordHash');
-    expect(typeof res.body.data.accessToken).toBe('string');
-    expect(typeof res.body.data.refreshToken).toBe('string');
+    expect(res.body.data).not.toHaveProperty('accessToken');
+    expect(res.body.data).not.toHaveProperty('refreshToken');
 
-    // The session it returns is real: the access token works, the refresh token rotates.
-    const me = await api()
-      .get('/api/v1/auth/me')
-      .set('Authorization', `Bearer ${res.body.data.accessToken}`);
-    expect(me.status).toBe(200);
-    expect(me.body.data.email).toBe(NEW_USER.email);
+    // No refresh token row was minted on the side; sessions come from /login only.
+    expect(await prisma.refreshToken.count()).toBe(0);
   });
 
   it('stores the password hashed and the new account can log in with it', async () => {
@@ -122,12 +118,12 @@ describe('POST /api/v1/auth/login', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.user).toMatchObject({ email: TEST_USER.email, name: TEST_USER.name });
     expect(res.body.data.user).not.toHaveProperty('passwordHash');
-    expect(typeof res.body.data.accessToken).toBe('string');
-    expect(typeof res.body.data.refreshToken).toBe('string');
+    expect(typeof res.body.data.access_token).toBe('string');
+    expect(typeof res.body.data.refresh_token).toBe('string');
   });
 
   it('persists the refresh token hashed, never in plaintext', async () => {
-    const { refreshToken } = await loginAs(TEST_USER.email, TEST_USER.password);
+    const { refresh_token: refreshToken } = await loginAs(TEST_USER.email, TEST_USER.password);
     const rows = await prisma.refreshToken.findMany();
 
     expect(rows).toHaveLength(1);
@@ -175,7 +171,7 @@ describe('POST /api/v1/auth/login', () => {
 
 describe('GET /api/v1/auth/me', () => {
   it('returns the caller for a valid access token', async () => {
-    const { accessToken } = await loginAs(TEST_USER.email, TEST_USER.password);
+    const { access_token: accessToken } = await loginAs(TEST_USER.email, TEST_USER.password);
     const res = await api().get('/api/v1/auth/me').set('Authorization', `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -189,7 +185,7 @@ describe('GET /api/v1/auth/me', () => {
   });
 
   it('rejects a tampered token', async () => {
-    const { accessToken } = await loginAs(TEST_USER.email, TEST_USER.password);
+    const { access_token: accessToken } = await loginAs(TEST_USER.email, TEST_USER.password);
     const tampered = accessToken.slice(0, -4) + 'AAAA';
     const res = await api().get('/api/v1/auth/me').set('Authorization', `Bearer ${tampered}`);
     expect(res.status).toBe(401);
@@ -200,17 +196,19 @@ describe('POST /api/v1/auth/refresh — rotation', () => {
   it('issues a new pair and retires the presented token', async () => {
     const first = await loginAs(TEST_USER.email, TEST_USER.password);
 
-    const res = await api().post('/api/v1/auth/refresh').send({ refreshToken: first.refreshToken });
+    const res = await api()
+      .post('/api/v1/auth/refresh')
+      .send({ refresh_token: first.refresh_token });
 
     expect(res.status).toBe(200);
-    expect(res.body.data.refreshToken).not.toBe(first.refreshToken);
-    expect(res.body.data.accessToken).not.toBe(first.accessToken);
+    expect(res.body.data.refresh_token).not.toBe(first.refresh_token);
+    expect(res.body.data.access_token).not.toBe(first.access_token);
 
     const old = await prisma.refreshToken.findUnique({
-      where: { tokenHash: hashToken(first.refreshToken) },
+      where: { tokenHash: hashToken(first.refresh_token) },
     });
     const next = await prisma.refreshToken.findUnique({
-      where: { tokenHash: hashToken(res.body.data.refreshToken) },
+      where: { tokenHash: hashToken(res.body.data.refresh_token) },
     });
     expect(old?.revokedAt).not.toBeNull();
     expect(old?.replacedById).toBe(next?.id);
@@ -223,18 +221,18 @@ describe('POST /api/v1/auth/refresh — rotation', () => {
 
     const tabA = await api()
       .post('/api/v1/auth/refresh')
-      .send({ refreshToken: first.refreshToken });
+      .send({ refresh_token: first.refresh_token });
     const tabB = await api()
       .post('/api/v1/auth/refresh')
-      .send({ refreshToken: first.refreshToken });
+      .send({ refresh_token: first.refresh_token });
 
     expect(tabA.status).toBe(200);
     expect(tabB.status).toBe(200);
     // Both tabs hold valid, distinct tokens; nobody got logged out.
-    expect(tabB.body.data.refreshToken).not.toBe(tabA.body.data.refreshToken);
+    expect(tabB.body.data.refresh_token).not.toBe(tabA.body.data.refresh_token);
     const stillValid = await api()
       .post('/api/v1/auth/refresh')
-      .send({ refreshToken: tabA.body.data.refreshToken });
+      .send({ refresh_token: tabA.body.data.refresh_token });
     expect(stillValid.status).toBe(200);
   });
 
@@ -242,25 +240,25 @@ describe('POST /api/v1/auth/refresh — rotation', () => {
     const first = await loginAs(TEST_USER.email, TEST_USER.password);
     const rotated = await api()
       .post('/api/v1/auth/refresh')
-      .send({ refreshToken: first.refreshToken });
+      .send({ refresh_token: first.refresh_token });
     expect(rotated.status).toBe(200);
 
     // Move the revocation into the past, beyond the grace window.
     await prisma.refreshToken.update({
-      where: { tokenHash: hashToken(first.refreshToken) },
+      where: { tokenHash: hashToken(first.refresh_token) },
       data: { revokedAt: new Date(Date.now() - 60_000) },
     });
 
     const replay = await api()
       .post('/api/v1/auth/refresh')
-      .send({ refreshToken: first.refreshToken });
+      .send({ refresh_token: first.refresh_token });
     expect(replay.status).toBe(401);
     expect(replay.body.error.code).toBe('TOKEN_REUSE_DETECTED');
 
     // The legitimate successor is dead too — that is the point.
     const successor = await api()
       .post('/api/v1/auth/refresh')
-      .send({ refreshToken: rotated.body.data.refreshToken });
+      .send({ refresh_token: rotated.body.data.refresh_token });
     expect(successor.status).toBe(401);
 
     const live = await prisma.refreshToken.count({ where: { revokedAt: null } });
@@ -270,17 +268,21 @@ describe('POST /api/v1/auth/refresh — rotation', () => {
   it('rejects an expired refresh token with SESSION_EXPIRED', async () => {
     const first = await loginAs(TEST_USER.email, TEST_USER.password);
     await prisma.refreshToken.update({
-      where: { tokenHash: hashToken(first.refreshToken) },
+      where: { tokenHash: hashToken(first.refresh_token) },
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
 
-    const res = await api().post('/api/v1/auth/refresh').send({ refreshToken: first.refreshToken });
+    const res = await api()
+      .post('/api/v1/auth/refresh')
+      .send({ refresh_token: first.refresh_token });
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('SESSION_EXPIRED');
   });
 
   it('rejects an unknown refresh token', async () => {
-    const res = await api().post('/api/v1/auth/refresh').send({ refreshToken: 'not-a-real-token' });
+    const res = await api()
+      .post('/api/v1/auth/refresh')
+      .send({ refresh_token: 'not-a-real-token' });
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('UNAUTHENTICATED');
   });
@@ -292,12 +294,12 @@ describe('POST /api/v1/auth/logout', () => {
 
     const res = await api()
       .post('/api/v1/auth/logout')
-      .send({ refreshToken: session.refreshToken });
+      .send({ refresh_token: session.refresh_token });
     expect(res.status).toBe(204);
 
     const after = await api()
       .post('/api/v1/auth/refresh')
-      .send({ refreshToken: session.refreshToken });
+      .send({ refresh_token: session.refresh_token });
     expect(after.status).toBe(401);
   });
 

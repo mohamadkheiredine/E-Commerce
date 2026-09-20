@@ -28,14 +28,14 @@ function toCartItemDto(item: CartItemRecord): CartItemDto {
           id: item.variant.id,
           type: item.variant.type,
           value: item.variant.value,
-          priceDelta: item.variant.priceDelta,
+          price_delta: item.variant.priceDelta,
           stock: item.variant.stock,
           sku: item.variant.sku,
         }
       : null,
-    unitPrice,
-    lineTotal: unitPrice * item.quantity,
-    availableStock: availableStock(item.product, item.variantId),
+    unit_price: unitPrice,
+    line_total: unitPrice * item.quantity,
+    available_stock: availableStock(item.product, item.variantId),
   };
 }
 
@@ -46,14 +46,14 @@ export function computeShipping(subtotal: number): number {
 
 export function buildCartDto(items: CartItemRecord[]): CartDto {
   const dtoItems = items.map(toCartItemDto);
-  const subtotal = dtoItems.reduce((sum, i) => sum + i.lineTotal, 0);
+  const subtotal = dtoItems.reduce((sum, i) => sum + i.line_total, 0);
   const shipping = computeShipping(subtotal);
   return {
     items: dtoItems,
     subtotal,
     shipping,
     total: subtotal + shipping,
-    itemCount: dtoItems.reduce((sum, i) => sum + i.quantity, 0),
+    item_count: dtoItems.reduce((sum, i) => sum + i.quantity, 0),
   };
 }
 

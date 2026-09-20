@@ -34,10 +34,11 @@ export const loginPayloadSchema = z.object({
 });
 export type LoginPayload = z.infer<typeof loginPayloadSchema>;
 
+/** OAuth 2's own field names, which are snake_case for the same reason the rest of the wire is. */
 export const loginResponseSchema = z.object({
   user: userSchema,
-  accessToken: z.string(),
-  refreshToken: z.string(),
+  access_token: z.string(),
+  refresh_token: z.string(),
 });
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
 
@@ -100,19 +101,29 @@ export const signupFormSchema = signupPayloadSchema
   });
 export type SignupFormPayload = z.infer<typeof signupFormSchema>;
 
-/** Signing up signs the new user in, so the response is the login response. */
-export const signupResponseSchema = loginResponseSchema;
+/**
+ * Sign-up returns the created user and nothing else. No tokens are issued: the new
+ * account signs in through the login endpoint like any other, so there is exactly
+ * one code path that mints a session.
+ */
+export const signupResponseSchema = z.object({ user: userSchema });
 export type SignupResponse = z.infer<typeof signupResponseSchema>;
 
-export const refreshPayloadSchema = z.object({
-  refreshToken: z.string().min(1, { error: 'Missing refresh token' }),
+export const refreshBodySchema = z.object({
+  refresh_token: z.string().min(1, { error: 'Missing refresh token' }),
 });
-export type RefreshPayload = z.infer<typeof refreshPayloadSchema>;
+export type RefreshBody = z.infer<typeof refreshBodySchema>;
+
+/** Logout is best-effort: a missing token is a no-op, not an error. */
+export const logoutBodySchema = z.object({
+  refresh_token: z.string().optional(),
+});
+export type LogoutBody = z.infer<typeof logoutBodySchema>;
 
 /** Rotation returns a brand new pair; the presented token is retired on use. */
 export const refreshResponseSchema = z.object({
-  accessToken: z.string(),
-  refreshToken: z.string(),
+  access_token: z.string(),
+  refresh_token: z.string(),
 });
 export type RefreshResponse = z.infer<typeof refreshResponseSchema>;
 

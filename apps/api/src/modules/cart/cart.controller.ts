@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import type { AddToCartPayload, PatchCartItemBody } from '@ecom/contracts';
+import type { AddToCartBody, PatchCartItemBody } from '@ecom/contracts';
 import { requireUser } from '../../middleware/authenticate.js';
 import { validated } from '../../middleware/validate.js';
 import { cartService } from './cart.service.js';
@@ -12,8 +12,14 @@ export const cartController = {
 
   async addItem(req: Request, res: Response): Promise<void> {
     const user = requireUser(req);
-    const body = validated<AddToCartPayload>(req);
-    const cart = await cartService.addItem(user.id, body);
+    // The wire is snake_case; the service speaks the code's camelCase. The controller
+    // is the seam where that translation belongs.
+    const body = validated<AddToCartBody>(req);
+    const cart = await cartService.addItem(user.id, {
+      productId: body.product_id,
+      variantId: body.variant_id,
+      quantity: body.quantity,
+    });
     res.status(201).json({ data: cart });
   },
 
@@ -25,7 +31,7 @@ export const cartController = {
     const cart =
       'quantity' in body
         ? await cartService.updateQuantity(user.id, id, body.quantity)
-        : await cartService.changeVariant(user.id, id, body.variantId);
+        : await cartService.changeVariant(user.id, id, body.variant_id);
 
     res.json({ data: cart });
   },

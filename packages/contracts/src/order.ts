@@ -10,28 +10,28 @@ export type OrderStatus = z.infer<typeof orderStatusSchema>;
  *
  * If a product is renamed or repriced tomorrow, an order placed today must still show
  * what the customer actually agreed to pay. Orders are immutable records; only the
- * `productId` is kept as a soft reference for "buy it again" style links.
+ * `product_id` is kept as a soft reference for "buy it again" style links.
  */
 export const orderItemSchema = z.object({
   id: idSchema,
-  productId: idSchema,
-  titleSnapshot: z.string(),
-  variantLabelSnapshot: z.string().nullable(),
-  unitPrice: minorUnitsSchema,
+  product_id: idSchema,
+  title_snapshot: z.string(),
+  variant_label_snapshot: z.string().nullable(),
+  unit_price: minorUnitsSchema,
   quantity: z.number().int().positive(),
-  lineTotal: minorUnitsSchema,
+  line_total: minorUnitsSchema,
 });
 export type OrderItemDto = z.infer<typeof orderItemSchema>;
 
 export const orderSchema = z.object({
   id: idSchema,
-  orderNumber: z.string(),
+  order_number: z.string(),
   status: orderStatusSchema,
   items: z.array(orderItemSchema),
   subtotal: minorUnitsSchema,
   shipping: minorUnitsSchema,
   total: minorUnitsSchema,
-  placedAt: z.string(),
+  placed_at: z.string(),
 });
 export type OrderDto = z.infer<typeof orderSchema>;
 

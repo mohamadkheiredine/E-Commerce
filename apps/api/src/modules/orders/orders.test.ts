@@ -14,7 +14,7 @@ beforeEach(async () => {
   await resetDb();
   await createTestUser();
   cat = await seedCatalogue();
-  token = (await loginAs(TEST_USER.email, TEST_USER.password)).accessToken;
+  token = (await loginAs(TEST_USER.email, TEST_USER.password)).access_token;
 });
 
 const authed = () => ({ Authorization: `Bearer ${token}` });
@@ -25,27 +25,29 @@ const place = (key = randomUUID()) =>
 
 describe('POST /api/v1/orders', () => {
   it('places an order: snapshots lines, decrements stock, clears the cart', async () => {
-    await addToCart({ productId: cat.plain.id, quantity: 2 }); // 9,900 each, stock 5
-    await addToCart({ productId: cat.shirt.id, variantId: cat.variants.S.id, quantity: 1 }); // 30,000, stock 3
+    await addToCart({ product_id: cat.plain.id, quantity: 2 }); // 9,900 each, stock 5
+    await addToCart({ product_id: cat.shirt.id, variant_id: cat.variants.S.id, quantity: 1 }); // 30,000, stock 3
 
     const res = await place();
 
     expect(res.status).toBe(201);
     const order = res.body.data;
-    expect(order.orderNumber).toMatch(/^ATL-[A-Z0-9]+-[A-Z0-9]{4}$/);
+    expect(order.order_number).toMatch(/^ATL-[A-Z0-9]+-[A-Z0-9]{4}$/);
     expect(order.status).toBe('PLACED');
     expect(order.items).toHaveLength(2);
     expect(order.subtotal).toBe(49800);
     expect(order.shipping).toBe(2500);
     expect(order.total).toBe(52300);
 
-    const shirtLine = order.items.find((i: { productId: string }) => i.productId === cat.shirt.id);
+    const shirtLine = order.items.find(
+      (i: { product_id: string }) => i.product_id === cat.shirt.id,
+    );
     expect(shirtLine).toMatchObject({
-      titleSnapshot: 'Linen Shirt',
-      variantLabelSnapshot: 'Size: S',
-      unitPrice: 30000,
+      title_snapshot: 'Linen Shirt',
+      variant_label_snapshot: 'Size: S',
+      unit_price: 30000,
       quantity: 1,
-      lineTotal: 30000,
+      line_total: 30000,
     });
 
     // Stock moved.
@@ -59,7 +61,7 @@ describe('POST /api/v1/orders', () => {
   });
 
   it('is idempotent: the same key returns the same order and places nothing new', async () => {
-    await addToCart({ productId: cat.plain.id, quantity: 1 });
+    await addToCart({ product_id: cat.plain.id, quantity: 1 });
     const key = randomUUID();
 
     const first = await place(key);
@@ -67,7 +69,7 @@ describe('POST /api/v1/orders', () => {
 
     expect(first.status).toBe(201);
     expect(second.status).toBe(201);
-    expect(second.body.data.orderNumber).toBe(first.body.data.orderNumber);
+    expect(second.body.data.order_number).toBe(first.body.data.order_number);
     expect(await prisma.order.count()).toBe(1);
 
     const plain = await prisma.product.findUnique({ where: { id: cat.plain.id } });
@@ -82,8 +84,8 @@ describe('POST /api/v1/orders', () => {
   });
 
   it('refuses when stock dropped after the item was carted, and writes nothing', async () => {
-    await addToCart({ productId: cat.plain.id, quantity: 3 });
-    await addToCart({ productId: cat.shirt.id, variantId: cat.variants.M.id, quantity: 2 });
+    await addToCart({ product_id: cat.plain.id, quantity: 3 });
+    await addToCart({ product_id: cat.shirt.id, variant_id: cat.variants.M.id, quantity: 2 });
 
     // Someone else bought most of the plain bottles in the meantime.
     await prisma.product.update({ where: { id: cat.plain.id }, data: { stock: 1 } });
@@ -102,40 +104,40 @@ describe('POST /api/v1/orders', () => {
   });
 
   it('requires an Idempotency-Key header', async () => {
-    await addToCart({ productId: cat.plain.id, quantity: 1 });
+    await addToCart({ product_id: cat.plain.id, quantity: 1 });
     const res = await api().post('/api/v1/orders').set(authed()).send();
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('frees shipping above the threshold', async () => {
-    await addToCart({ productId: cat.shirt.id, variantId: cat.variants.M.id, quantity: 2 }); // 60,000
+    await addToCart({ product_id: cat.shirt.id, variant_id: cat.variants.M.id, quantity: 2 }); // 60,000
     const res = await place();
     expect(res.body.data.shipping).toBe(0);
     expect(res.body.data.total).toBe(60000);
   });
 });
 
-describe('GET /api/v1/orders/:orderNumber', () => {
+describe('GET /api/v1/orders/:order_number', () => {
   it('returns the order to its owner', async () => {
-    await addToCart({ productId: cat.plain.id, quantity: 1 });
+    await addToCart({ product_id: cat.plain.id, quantity: 1 });
     const placed = await place();
 
-    const res = await api().get(`/api/v1/orders/${placed.body.data.orderNumber}`).set(authed());
+    const res = await api().get(`/api/v1/orders/${placed.body.data.order_number}`).set(authed());
 
     expect(res.status).toBe(200);
-    expect(res.body.data.orderNumber).toBe(placed.body.data.orderNumber);
+    expect(res.body.data.order_number).toBe(placed.body.data.order_number);
   });
 
   it("is a 404 for another user's order", async () => {
-    await addToCart({ productId: cat.plain.id, quantity: 1 });
+    await addToCart({ product_id: cat.plain.id, quantity: 1 });
     const placed = await place();
 
     await createTestUser({ email: 'other@shop.test' });
-    const other = (await loginAs('other@shop.test', TEST_USER.password)).accessToken;
+    const other = (await loginAs('other@shop.test', TEST_USER.password)).access_token;
 
     const res = await api()
-      .get(`/api/v1/orders/${placed.body.data.orderNumber}`)
+      .get(`/api/v1/orders/${placed.body.data.order_number}`)
       .set('Authorization', `Bearer ${other}`);
 
     expect(res.status).toBe(404);

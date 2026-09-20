@@ -9,7 +9,7 @@ beforeEach(async () => {
   await resetDb();
   await createTestUser();
   await seedCatalogue();
-  token = (await loginAs(TEST_USER.email, TEST_USER.password)).accessToken;
+  token = (await loginAs(TEST_USER.email, TEST_USER.password)).access_token;
 });
 
 const authed = () => ({ Authorization: `Bearer ${token}` });

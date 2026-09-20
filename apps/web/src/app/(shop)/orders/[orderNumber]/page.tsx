@@ -48,7 +48,7 @@ export default async function OrderPage({ params }: Props) {
             {order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}
           </Card.Title>
         </Card.Header>
-        <Card.Content>
+        <Card.Content className="px-4 md:px-6">
           <ul className="divide-y" aria-label="Order items">
             {order.lines.map((line) => (
               <li
@@ -68,7 +68,7 @@ export default async function OrderPage({ params }: Props) {
           </ul>
         </Card.Content>
         <Card.Separator />
-        <Card.Content>
+        <Card.Content className="px-4 md:px-6">
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Subtotal</dt>

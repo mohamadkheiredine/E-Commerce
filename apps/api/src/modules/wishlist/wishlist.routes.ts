@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  addToWishlistPayloadSchema,
+  addToWishlistBodySchema,
   moveToCartBodySchema,
   wishlistProductIdParamsSchema,
 } from '@ecom/contracts';
@@ -13,7 +13,7 @@ export const wishlistRouter: Router = Router();
 wishlistRouter.use(authenticate);
 
 wishlistRouter.get('/', wishlistController.get);
-wishlistRouter.post('/items', validate(addToWishlistPayloadSchema), wishlistController.add);
+wishlistRouter.post('/items', validate(addToWishlistBodySchema), wishlistController.add);
 wishlistRouter.delete(
   '/items/:productId',
   validate(wishlistProductIdParamsSchema, 'params'),

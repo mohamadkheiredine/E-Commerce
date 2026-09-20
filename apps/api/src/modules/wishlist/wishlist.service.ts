@@ -9,12 +9,12 @@ function toWishlistItemDto(item: WishlistItemRecord): WishlistItemDto {
   return {
     id: item.id,
     product: toProductDto(item.product),
-    addedAt: item.createdAt.toISOString(),
+    added_at: item.createdAt.toISOString(),
   };
 }
 
 function buildWishlistDto(items: WishlistItemRecord[]): WishlistDto {
-  return { items: items.map(toWishlistItemDto), itemCount: items.length };
+  return { items: items.map(toWishlistItemDto), item_count: items.length };
 }
 
 export const wishlistService = {

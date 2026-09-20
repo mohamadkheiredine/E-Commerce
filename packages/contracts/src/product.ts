@@ -2,9 +2,15 @@ import { z } from 'zod';
 import { idSchema, minorUnitsSchema } from './common';
 
 /**
+ * Wire DTOs are snake_case — the same names as the database columns, so a reviewer
+ * can read a row, an API response and a migration and see one vocabulary. This is
+ * the convention of Stripe, GitHub and OAuth 2 (`access_token`); camelCase is the
+ * convention of the code that consumes it, and the web app's `serializers/` make
+ * that translation exactly once.
+ *
  * A variant is a purchasable configuration of a product — "Size: Large", "Color: Graphite".
  *
- * `priceDelta` is signed and added to the product's `basePrice`, so a variant can cost
+ * `price_delta` is signed and added to the product's `base_price`, so a variant can cost
  * more or less than the default without duplicating the base price on every row.
  * Stock lives here rather than on the product because a product can be sold out in Large
  * while Medium is still available.
@@ -13,7 +19,7 @@ export const variantSchema = z.object({
   id: idSchema,
   type: z.string(),
   value: z.string(),
-  priceDelta: z.number().int(),
+  price_delta: z.number().int(),
   stock: z.number().int().nonnegative(),
   sku: z.string(),
 });
@@ -24,8 +30,8 @@ export const productSchema = z.object({
   slug: z.string(),
   title: z.string(),
   description: z.string(),
-  basePrice: minorUnitsSchema,
-  imageUrl: z.string(),
+  base_price: minorUnitsSchema,
+  image_url: z.string(),
   category: z.string(),
   /**
    * Only meaningful for products with no variants. When `variants` is non-empty the

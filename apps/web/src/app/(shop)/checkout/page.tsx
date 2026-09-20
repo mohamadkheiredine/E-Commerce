@@ -44,7 +44,7 @@ export default async function CheckoutPage() {
             {cart.itemCount} {cart.itemCount === 1 ? 'item' : 'items'}
           </Card.Title>
         </Card.Header>
-        <Card.Content>
+        <Card.Content className="px-4 md:px-6">
           <ul className="divide-y" aria-label="Items in this order">
             {cart.lines.map((line) => (
               <li
@@ -64,7 +64,7 @@ export default async function CheckoutPage() {
           </ul>
         </Card.Content>
         <Card.Separator />
-        <Card.Content>
+        <Card.Content className="px-4 md:px-6">
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Subtotal</dt>

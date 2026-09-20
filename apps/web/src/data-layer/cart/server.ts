@@ -9,7 +9,12 @@ import {
 } from '@ecom/contracts';
 import { getUserOrRedirect } from '@/lib/auth/get-user-or-redirect';
 import type { Cart } from '@/models/cart/read';
-import { deserializeCart } from '@/serializers/cart';
+import {
+  deserializeCart,
+  serializeAddToCartBody,
+  serializeCartItemQuantityBody,
+  serializeCartItemVariantBody,
+} from '@/serializers/cart';
 
 /**
  * The cart is deliberately NOT wrapped in `withUserCache`. It is user-scoped and
@@ -29,7 +34,7 @@ export const fetchCart = cache(async (): Promise<Cart> => {
 
 export async function addToCart(payload: AddToCartPayload): Promise<Cart> {
   const { api } = await getUserOrRedirect();
-  const dto = await api.post<unknown>('/cart/items', payload);
+  const dto = await api.post<unknown>('/cart/items', serializeAddToCartBody(payload));
   return deserializeCart(cartSchema.parse(dto));
 }
 
@@ -37,17 +42,19 @@ export async function updateCartItemQuantity(
   payload: UpdateCartItemQuantityPayload,
 ): Promise<Cart> {
   const { api } = await getUserOrRedirect();
-  const dto = await api.patch<unknown>(`/cart/items/${encodeURIComponent(payload.itemId)}`, {
-    quantity: payload.quantity,
-  });
+  const dto = await api.patch<unknown>(
+    `/cart/items/${encodeURIComponent(payload.itemId)}`,
+    serializeCartItemQuantityBody(payload),
+  );
   return deserializeCart(cartSchema.parse(dto));
 }
 
 export async function changeCartItemVariant(payload: ChangeCartItemVariantPayload): Promise<Cart> {
   const { api } = await getUserOrRedirect();
-  const dto = await api.patch<unknown>(`/cart/items/${encodeURIComponent(payload.itemId)}`, {
-    variantId: payload.variantId,
-  });
+  const dto = await api.patch<unknown>(
+    `/cart/items/${encodeURIComponent(payload.itemId)}`,
+    serializeCartItemVariantBody(payload),
+  );
   return deserializeCart(cartSchema.parse(dto));
 }
 

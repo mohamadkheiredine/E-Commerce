@@ -9,6 +9,110 @@ beforeEach(async () => {
   await createTestUser();
 });
 
+describe('POST /api/v1/auth/signup', () => {
+  const NEW_USER = { name: 'New Shopper', email: 'new@shop.test', password: 'AnotherHorse2!' };
+
+  it('creates the account and returns a signed-in session', async () => {
+    const res = await api().post('/api/v1/auth/signup').send(NEW_USER);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.user).toMatchObject({ email: NEW_USER.email, name: NEW_USER.name });
+    expect(res.body.data.user).not.toHaveProperty('passwordHash');
+    expect(typeof res.body.data.accessToken).toBe('string');
+    expect(typeof res.body.data.refreshToken).toBe('string');
+
+    // The session it returns is real: the access token works, the refresh token rotates.
+    const me = await api()
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${res.body.data.accessToken}`);
+    expect(me.status).toBe(200);
+    expect(me.body.data.email).toBe(NEW_USER.email);
+  });
+
+  it('stores the password hashed and the new account can log in with it', async () => {
+    await api().post('/api/v1/auth/signup').send(NEW_USER);
+
+    const row = await prisma.user.findUnique({ where: { email: NEW_USER.email } });
+    expect(row?.passwordHash).toBeDefined();
+    expect(row?.passwordHash).not.toBe(NEW_USER.password);
+    expect(row?.passwordHash.startsWith('$argon2id$')).toBe(true);
+
+    const login = await api()
+      .post('/api/v1/auth/login')
+      .send({ email: NEW_USER.email, password: NEW_USER.password });
+    expect(login.status).toBe(200);
+  });
+
+  it('normalises the email so the account can be found regardless of case', async () => {
+    const res = await api()
+      .post('/api/v1/auth/signup')
+      .send({ ...NEW_USER, email: 'New@Shop.TEST' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.user.email).toBe(NEW_USER.email);
+  });
+
+  it('rejects an email that is already registered with EMAIL_TAKEN', async () => {
+    const res = await api()
+      .post('/api/v1/auth/signup')
+      .send({ ...NEW_USER, email: TEST_USER.email });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('EMAIL_TAKEN');
+    expect(await prisma.user.count()).toBe(1);
+  });
+
+  it('treats the duplicate check as case-insensitive', async () => {
+    const res = await api()
+      .post('/api/v1/auth/signup')
+      .send({ ...NEW_USER, email: TEST_USER.email.toUpperCase() });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('EMAIL_TAKEN');
+  });
+
+  it('rejects a password shorter than the floor with a field-level detail', async () => {
+    const res = await api()
+      .post('/api/v1/auth/signup')
+      .send({ ...NEW_USER, password: 'short1' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(res.body.error.details).toHaveProperty('password');
+    expect(await prisma.user.count()).toBe(1);
+  });
+
+  it('rejects a blank name and a malformed email', async () => {
+    const res = await api()
+      .post('/api/v1/auth/signup')
+      .send({ name: '   ', email: 'not-an-email', password: NEW_USER.password });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.details).toHaveProperty('name');
+    expect(res.body.error.details).toHaveProperty('email');
+  });
+
+  it('does not accept a confirmPassword field — that is a form concern, not an API one', async () => {
+    // Extra keys are stripped rather than rejected; the point is that the API never
+    // depends on the client having compared two fields.
+    const res = await api()
+      .post('/api/v1/auth/signup')
+      .send({ ...NEW_USER, confirmPassword: 'something-else' });
+    expect(res.status).toBe(201);
+  });
+
+  it('survives two simultaneous sign-ups for the same email: exactly one wins', async () => {
+    const [a, b] = await Promise.all([
+      api().post('/api/v1/auth/signup').send(NEW_USER),
+      api().post('/api/v1/auth/signup').send(NEW_USER),
+    ]);
+
+    const statuses = [a.status, b.status].sort();
+    expect(statuses).toEqual([201, 409]);
+    expect(await prisma.user.count({ where: { email: NEW_USER.email } })).toBe(1);
+  });
+});
+
 describe('POST /api/v1/auth/login', () => {
   it('returns the user and a token pair for valid credentials', async () => {
     const res = await api()

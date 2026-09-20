@@ -9,7 +9,10 @@ import {
 } from '@/lib/auth/session';
 
 /** Paths reachable without a session. Everything else is gated. */
-const PUBLIC_PATHS = ['/login'];
+const PUBLIC_PATHS = ['/login', '/signup'];
+
+/** Public paths that make no sense once signed in; a session there goes to the catalogue. */
+const GUEST_ONLY_PATHS = ['/login', '/signup'];
 
 /**
  * Refresh when this much of the access token's life is left. At a 15-minute TTL,
@@ -85,7 +88,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   if (isPublic(pathname)) {
-    if (session && pathname === '/login') {
+    if (session && GUEST_ONLY_PATHS.includes(pathname)) {
       return NextResponse.redirect(new URL('/products', request.url));
     }
     return response;

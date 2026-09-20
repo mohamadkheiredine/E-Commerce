@@ -12,6 +12,7 @@ import { isApiClientError } from '@/lib/api/errors';
 const MESSAGES: Partial<Record<ErrorCode, string>> = {
   VALIDATION_ERROR: 'Please check the form and try again.',
   INVALID_CREDENTIALS: 'That email and password combination is not right.',
+  EMAIL_TAKEN: 'An account with this email already exists. Try signing in instead.',
   UNAUTHENTICATED: 'Please sign in to continue.',
   SESSION_EXPIRED: 'Your session has expired. Please sign in again.',
   TOKEN_REUSE_DETECTED: 'For your security you have been signed out. Please sign in again.',

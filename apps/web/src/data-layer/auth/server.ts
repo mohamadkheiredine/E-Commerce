@@ -1,11 +1,23 @@
 import 'server-only';
-import { loginResponseSchema, type LoginPayload, type LoginResponse } from '@ecom/contracts';
+import {
+  loginResponseSchema,
+  signupResponseSchema,
+  type LoginPayload,
+  type LoginResponse,
+  type SignupPayload,
+  type SignupResponse,
+} from '@ecom/contracts';
 import { publicApi } from '@/lib/api/client';
 
 /**
  * Auth is the one data-layer module that does not go through `getUserOrRedirect()`,
  * because by definition there is no user yet.
  */
+export async function signup(payload: SignupPayload): Promise<SignupResponse> {
+  const data = await publicApi.post<unknown>('/auth/signup', payload);
+  return signupResponseSchema.parse(data);
+}
+
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   const data = await publicApi.post<unknown>('/auth/login', payload);
   // Parse rather than cast: the API is ours, but a schema check here is what turns

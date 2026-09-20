@@ -1,11 +1,13 @@
 # Frontend
 
-**Next.js App Router:** Gives server-side data fetching and server actions while keeping the frontend lightweight.
+I chose Next.js App Router because it makes server-side data fetching and server actions easier. It also helps keep unnecessary JavaScript out of the browser.
 
-**Page → Data Layer → Serializer → Action:** Keeps API logic separate from UI logic and makes API changes easier to manage.
+I separated the page, data layer, serializer, and actions to keep things organized. This also makes it easier to handle API changes without changing the UI.
 
-**Progressive enhancement:** Forms still work without JavaScript, while JavaScript adds a faster and smoother experience.
+The API uses `snake_case`, while the frontend uses `camelCase`. I handle this conversion inside the serializers so it stays in one place.
 
-**Zod + React Hook Form:** Provides client-side validation while the server validates the data again for security.
+I use normal HTML forms with Server Actions, so they can still work if JavaScript is disabled. JavaScript is mainly used to improve the user experience.
 
-**Responsive design:** Tested the UI at **375px, 768px, and 1280px**, adjusting layouts like the navigation and cart to work well across screen sizes.
+I use Zod and React Hook Form for validation. The client validates the form first, but the server validates the data again before using it.
+
+I tested the UI at 375px, 768px, and 1280px. I fixed the mobile navigation, cart layout, and card padding on smaller screens.

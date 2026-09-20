@@ -41,6 +41,69 @@ export const loginResponseSchema = z.object({
 });
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
 
+/**
+ * Sign-up.
+ *
+ * `signupPayloadSchema` is the wire contract: what the API accepts and what the web
+ * data layer posts. It carries no `confirmPassword` — matching two fields is a form
+ * concern, not something the API should have an opinion about.
+ *
+ * `signupFormSchema` extends it with the confirmation and the friendly copy. The
+ * server action parses FormData with *this* schema rather than the payload one, so
+ * the confirmation check still holds when JavaScript is off.
+ *
+ * Password rules follow NIST SP 800-63B: a length floor, a generous ceiling, and no
+ * composition rules. Forced "one uppercase, one symbol" patterns push people toward
+ * predictable substitutions and do not measurably raise entropy. argon2id has no
+ * 72-byte input limit, so the ceiling only guards against hashing multi-kilobyte
+ * strings on every attempt.
+ */
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 128;
+export const NAME_MAX_LENGTH = 80;
+
+export const signupPayloadSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, { error: 'Name is required' })
+    .max(NAME_MAX_LENGTH, { error: `Name must be ${NAME_MAX_LENGTH} characters or fewer` }),
+  email: z.email({ error: 'Invalid email address' }),
+  password: z
+    .string()
+    .min(PASSWORD_MIN_LENGTH, {
+      error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
+    })
+    .max(PASSWORD_MAX_LENGTH, {
+      error: `Password must be ${PASSWORD_MAX_LENGTH} characters or fewer`,
+    }),
+});
+export type SignupPayload = z.infer<typeof signupPayloadSchema>;
+
+export const signupFormSchema = signupPayloadSchema
+  .extend({
+    name: z
+      .string()
+      .trim()
+      .min(1, { error: 'Enter your name' })
+      .max(NAME_MAX_LENGTH, { error: `Keep your name to ${NAME_MAX_LENGTH} characters` }),
+    email: z.email({ error: 'Enter a valid email address' }),
+    password: z
+      .string()
+      .min(PASSWORD_MIN_LENGTH, { error: `Use at least ${PASSWORD_MIN_LENGTH} characters` })
+      .max(PASSWORD_MAX_LENGTH, { error: `Keep it under ${PASSWORD_MAX_LENGTH} characters` }),
+    confirmPassword: z.string().min(1, { error: 'Repeat your password' }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    error: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+export type SignupFormPayload = z.infer<typeof signupFormSchema>;
+
+/** Signing up signs the new user in, so the response is the login response. */
+export const signupResponseSchema = loginResponseSchema;
+export type SignupResponse = z.infer<typeof signupResponseSchema>;
+
 export const refreshPayloadSchema = z.object({
   refreshToken: z.string().min(1, { error: 'Missing refresh token' }),
 });

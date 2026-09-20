@@ -52,6 +52,19 @@ export class InvalidCredentialsError extends AppError {
   }
 }
 
+/**
+ * Sign-up is the one place that admits an email is registered. Login and password
+ * flows can stay silent because the user already knows their own address; a person
+ * signing up with someone else's email needs to be told why nothing happened, and
+ * without an outbound email pipeline there is no other channel to tell them on. The
+ * per-IP limit on the endpoint bounds how fast that admission can be harvested.
+ */
+export class EmailTakenError extends AppError {
+  constructor() {
+    super(409, 'EMAIL_TAKEN', 'An account with this email already exists');
+  }
+}
+
 export class UnauthenticatedError extends AppError {
   constructor(message = 'Authentication required') {
     super(401, 'UNAUTHENTICATED', message);

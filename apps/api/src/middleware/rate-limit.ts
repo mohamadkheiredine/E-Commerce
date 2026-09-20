@@ -1,4 +1,4 @@
-import { rateLimit, type Options } from 'express-rate-limit';
+import { ipKeyGenerator, rateLimit, type Options } from 'express-rate-limit';
 import { AppError } from '../lib/errors.js';
 import { isTest } from '../config/env.js';
 
@@ -25,6 +25,9 @@ const shared: Partial<Options> = {
  * attacker behind a large NAT lock everyone out; per-email alone lets a distributed
  * attacker spread attempts across addresses. Keying on both bounds each account to a
  * small budget per source without punishing unrelated users who share an address.
+ *
+ * `ipKeyGenerator` rather than the raw `req.ip`: it buckets IPv6 by /56 subnet, since
+ * one IPv6 user can otherwise rotate through billions of addresses in a single prefix.
  */
 export const loginRateLimit = rateLimit({
   ...shared,
@@ -32,8 +35,19 @@ export const loginRateLimit = rateLimit({
   limit: 10,
   keyGenerator: (req) => {
     const email = typeof req.body?.email === 'string' ? req.body.email.toLowerCase() : '';
-    return `${req.ip ?? 'unknown'}:${email}`;
+    return `${req.ip ? ipKeyGenerator(req.ip) : 'unknown'}:${email}`;
   },
+});
+
+/**
+ * Sign-up is per IP only — there is no account to key on yet. The budget is small
+ * because a legitimate visitor creates one account, and because this endpoint is the
+ * one that confirms whether an email is registered (see `EmailTakenError`).
+ */
+export const signupRateLimit = rateLimit({
+  ...shared,
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
 });
 
 export const refreshRateLimit = rateLimit({

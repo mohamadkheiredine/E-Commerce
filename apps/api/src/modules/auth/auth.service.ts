@@ -1,6 +1,8 @@
-import type { LoginResponse, RefreshResponse, UserDto } from '@ecom/contracts';
+import type { LoginResponse, RefreshResponse, SignupResponse, UserDto } from '@ecom/contracts';
 import { env } from '../../config/env.js';
+import { Prisma } from '../../generated/prisma/client.js';
 import {
+  EmailTakenError,
   InvalidCredentialsError,
   SessionExpiredError,
   TokenReuseDetectedError,
@@ -31,6 +33,12 @@ const DUMMY_HASH = await hashPassword('timing-equalisation-placeholder');
 
 type UserRecord = Pick<UserDto, 'id' | 'email' | 'name'>;
 
+/** The same normalisation login applies, so `Demo@Shop.test` and `demo@shop.test` are one account. */
+const normaliseEmail = (email: string) => email.toLowerCase().trim();
+
+const isUniqueViolation = (error: unknown): boolean =>
+  error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+
 async function issueTokenPair(user: UserRecord, family: string) {
   const accessToken = await signAccessToken({ sub: user.id, email: user.email, name: user.name });
 
@@ -47,8 +55,39 @@ async function issueTokenPair(user: UserRecord, family: string) {
 }
 
 export const authService = {
+  /**
+   * Creates the account and signs it in, so the caller receives the same shape as
+   * login and can set cookies without a second round trip.
+   *
+   * The pre-check gives a clean error in the common case; the catch handles the
+   * race where two requests for the same email pass the check together and one of
+   * them loses at the unique index. Both paths surface the identical error, so the
+   * client cannot tell which one it hit.
+   */
+  async signup(input: { name: string; email: string; password: string }): Promise<SignupResponse> {
+    const email = normaliseEmail(input.email);
+
+    if (await authRepository.findUserByEmail(email)) {
+      throw new EmailTakenError();
+    }
+
+    const passwordHash = await hashPassword(input.password);
+
+    let user: UserRecord;
+    try {
+      user = await authRepository.createUser({ email, name: input.name, passwordHash });
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new EmailTakenError();
+      throw error;
+    }
+
+    const { accessToken, refreshToken } = await issueTokenPair(user, newTokenFamily());
+
+    return { user, accessToken, refreshToken };
+  },
+
   async login(email: string, password: string): Promise<LoginResponse> {
-    const user = await authRepository.findUserByEmail(email.toLowerCase().trim());
+    const user = await authRepository.findUserByEmail(normaliseEmail(email));
 
     // Same work, same error, whether the account exists or not.
     const valid = await verifyPassword(user?.passwordHash ?? DUMMY_HASH, password);

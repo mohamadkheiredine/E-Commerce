@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import type { LoginPayload, RefreshPayload } from '@ecom/contracts';
+import type { LoginPayload, RefreshPayload, SignupPayload } from '@ecom/contracts';
 import { requireUser } from '../../middleware/authenticate.js';
 import { validated } from '../../middleware/validate.js';
 import { authService } from './auth.service.js';
@@ -9,6 +9,12 @@ import { authService } from './auth.service.js';
  * here: if a decision depends on data, it belongs in the service.
  */
 export const authController = {
+  async signup(req: Request, res: Response): Promise<void> {
+    const payload = validated<SignupPayload>(req);
+    const result = await authService.signup(payload);
+    res.status(201).json({ data: result });
+  },
+
   async login(req: Request, res: Response): Promise<void> {
     const { email, password } = validated<LoginPayload>(req);
     const result = await authService.login(email, password);

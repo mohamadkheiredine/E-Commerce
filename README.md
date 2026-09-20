@@ -152,12 +152,14 @@ redirect(searchParams.next ?? '/products')
 
 Tokens are set by the Next.js server and read only by the Next.js server. Nothing under `apps/web` reads `localStorage` or a JavaScript-visible cookie for auth, so an XSS has nothing to steal. The browser never calls the API at all, which is why the API's CORS allow-list is a single origin.
 
+Sign-up (`/signup` → `signupAction` → `POST /auth/signup`) is the same path with one difference: the server action parses the form with `signupFormSchema`, which includes the password confirmation, and forwards only `signupPayloadSchema`'s fields to the API. The API responds with a session, so a new account lands in the catalogue already signed in.
+
 ## Authentication design
 
 - **Access token**: 15-minute JWT (HS256, `jose`). Carried as `Authorization: Bearer` from the Next server to the API.
 - **Refresh token**: 7-day opaque random string, stored **hashed** in the database. Rotated on every use.
 - **Reuse detection**: refresh tokens belong to a _family_ (one per login). Presenting a token that has already been rotated is treated as theft: the whole family is revoked, which also logs out the legitimate user. That is the intended trade-off.
-- **Passwords**: argon2id via `@node-rs/argon2` (memory-hard; prebuilt binaries, no native toolchain on Windows). "No such user" and "wrong password" return the same response with comparable timing, so the login endpoint does not confirm which emails exist.
+- **Passwords**: argon2id via `@node-rs/argon2` (memory-hard; prebuilt binaries, no native toolchain on Windows). "No such user" and "wrong password" return the same response with comparable timing, so the login endpoint does not confirm which emails exist. Sign-up necessarily does (a `409 EMAIL_TAKEN`), because without an outbound email pipeline there is no other way to tell someone why their sign-up did nothing; a per-IP limit of 10 per hour bounds how fast that can be harvested. Password policy is NIST 800-63B: 8–128 characters, no composition rules.
 - **Rate limiting** on `/auth/*`, `helmet`, 100 KB JSON body cap, single-origin CORS.
 - **Three layers on the web side**: `proxy.ts` redirects (UX); `getUserOrRedirect()` in every page and data-layer call; and the API's own JWT check, which is the only one that decides. Next.js middleware is deliberately not treated as the authorization boundary.
 
@@ -167,6 +169,7 @@ Base path `/api/v1`. Every response is an envelope: `{ data }` on success, `{ er
 
 | Method | Path                                      | Auth | Notes                                                    |
 | ------ | ----------------------------------------- | ---- | -------------------------------------------------------- |
+| POST   | `/auth/signup`                            |      | rate-limited per IP; creates the user, returns a session |
 | POST   | `/auth/login`                             |      | rate-limited; returns user + token pair                  |
 | POST   | `/auth/refresh`                           |      | rotates the pair; reuse revokes the family               |
 | POST   | `/auth/logout`                            | ✓    | revokes the presented refresh token's family             |

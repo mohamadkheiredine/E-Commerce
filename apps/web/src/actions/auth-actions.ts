@@ -1,8 +1,8 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { loginPayloadSchema } from '@ecom/contracts';
-import { login, logout } from '@/data-layer/auth/server';
+import { loginPayloadSchema, signupFormSchema } from '@ecom/contracts';
+import { login, logout, signup } from '@/data-layer/auth/server';
 import { handleApiError } from '@/lib/api/handle-api-error';
 import { clearSessionCookies, getRefreshTokenCookie, setSessionCookies } from '@/lib/auth/session';
 import type { FormState } from '@/models/form-state';
@@ -16,8 +16,54 @@ function safeNextPath(value: unknown): string {
   if (typeof value !== 'string') return '/products';
   if (!value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\'))
     return '/products';
-  if (value.startsWith('/login')) return '/products';
+  if (value.startsWith('/login') || value.startsWith('/signup')) return '/products';
   return value;
+}
+
+/** Re-seeds the form after a failed round-trip. Passwords are never echoed back. */
+function echoFields(formData: Record<string, FormDataEntryValue>): Record<string, string> {
+  const fields: Record<string, string> = {};
+  for (const key of Object.keys(formData)) {
+    if (key === 'password' || key === 'confirmPassword') continue;
+    fields[key] = JSON.stringify(formData[key]);
+  }
+  return fields;
+}
+
+/**
+ * Parses with the *form* schema, not the payload schema, on purpose: the password
+ * confirmation must be enforced here for the no-JavaScript path, and the API has no
+ * business knowing a confirmation field exists. Only the payload fields go over the wire.
+ */
+export async function signupAction(_: FormState, data: FormData): Promise<FormState> {
+  const formData = Object.fromEntries(data);
+  const next = safeNextPath(formData.next);
+
+  try {
+    const parsed = signupFormSchema.safeParse(formData);
+
+    if (!parsed.success) {
+      return {
+        message: 'Invalid form data',
+        fields: echoFields(formData),
+        issues: parsed.error.issues.map((issue) => issue.message),
+      };
+    }
+
+    const { name, email, password } = parsed.data;
+    const session = await signup({ name, email, password });
+    await setSessionCookies(session);
+  } catch (error) {
+    console.error('Error creating account:', error);
+    return {
+      success: false,
+      message: 'Could not create your account.',
+      fields: echoFields(formData),
+      issues: [handleApiError(error)],
+    };
+  }
+
+  redirect(next);
 }
 
 export async function loginAction(_: FormState, data: FormData): Promise<FormState> {
@@ -28,14 +74,9 @@ export async function loginAction(_: FormState, data: FormData): Promise<FormSta
     const parsed = loginPayloadSchema.safeParse(formData);
 
     if (!parsed.success) {
-      const fields: Record<string, string> = {};
-      for (const key of Object.keys(formData)) {
-        if (key === 'password') continue; // never echo a password back into the page
-        fields[key] = JSON.stringify(formData[key]);
-      }
       return {
         message: 'Invalid form data',
-        fields,
+        fields: echoFields(formData),
         issues: parsed.error.issues.map((issue) => issue.message),
       };
     }

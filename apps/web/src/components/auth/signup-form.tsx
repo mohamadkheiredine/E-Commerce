@@ -4,8 +4,8 @@ import { startTransition, useActionState, useRef } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { loginFormSchema, type LoginFormPayload } from '@ecom/contracts';
-import { loginAction } from '@/actions/auth-actions';
+import { PASSWORD_MIN_LENGTH, signupFormSchema, type SignupFormPayload } from '@ecom/contracts';
+import { signupAction } from '@/actions/auth-actions';
 import { Button } from '@/components/shared/button';
 import { Card } from '@/components/shared/card';
 import { Form } from '@/components/shared/x-form';
@@ -13,40 +13,43 @@ import { Input } from '@/components/shared/input';
 import { useActionStateToast } from '@/hooks/use-action-state-toast';
 
 /**
- * Works without JavaScript: the `<form action={formAction}>` is a real POST to the
- * server action, which validates with the same zod schema and re-renders the page
- * with `state.issues` if something is wrong.
- *
- * With JavaScript, `onSubmit` intercepts the native submit, runs react-hook-form's
- * client-side validation (same schema, instant feedback), and then dispatches the
- * identical FormData to the identical action inside `startTransition` — required
- * whenever a form action is invoked manually rather than by the form itself.
+ * Same progressive-enhancement shape as `LoginForm`: a real `<form action>` that the
+ * server action handles on its own, with react-hook-form layered on top when
+ * JavaScript is available. The confirm-password rule lives in the shared zod schema,
+ * so both paths enforce it identically.
  */
-export function LoginForm({ next }: { next?: string }) {
-  const [state, formAction, isPending] = useActionState(loginAction, {
+export function SignupForm({ next }: { next?: string }) {
+  const [state, formAction, isPending] = useActionState(signupAction, {
     success: false,
     message: '',
   });
   useActionStateToast(state);
 
-  const form = useForm<LoginFormPayload>({
-    resolver: zodResolver(loginFormSchema),
+  const form = useForm<SignupFormPayload>({
+    resolver: zodResolver(signupFormSchema),
     defaultValues: {
+      name: '',
       email: '',
       password: '',
-      ...(state?.fields ? { email: JSON.parse(state.fields.email ?? '""') as string } : {}),
+      confirmPassword: '',
+      ...(state?.fields
+        ? {
+            name: JSON.parse(state.fields.name ?? '""') as string,
+            email: JSON.parse(state.fields.email ?? '""') as string,
+          }
+        : {}),
     },
   });
 
   const formRef = useRef<HTMLFormElement>(null);
 
-  const signupHref = next ? `/signup?next=${encodeURIComponent(next)}` : '/signup';
+  const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : '/login';
 
   return (
     <Card className="w-full">
       <Card.Header>
-        <Card.Title className="text-2xl">Sign in</Card.Title>
-        <Card.Description>Enter your email and password to continue.</Card.Description>
+        <Card.Title className="text-2xl">Create an account</Card.Title>
+        <Card.Description>A name, an email and a password is all it takes.</Card.Description>
       </Card.Header>
       <Card.Content>
         <Form {...form}>
@@ -64,6 +67,20 @@ export function LoginForm({ next }: { next?: string }) {
             noValidate
           >
             {next ? <input type="hidden" name="next" value={next} /> : null}
+
+            <Form.Field
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label>Name</Form.Label>
+                  <Form.Control>
+                    <Input type="text" autoComplete="name" placeholder="Your name" {...field} />
+                  </Form.Control>
+                  <Form.Message />
+                </Form.Item>
+              )}
+            />
 
             <Form.Field
               control={form.control}
@@ -92,7 +109,22 @@ export function LoginForm({ next }: { next?: string }) {
                 <Form.Item>
                   <Form.Label>Password</Form.Label>
                   <Form.Control>
-                    <Input type="password" autoComplete="current-password" {...field} />
+                    <Input type="password" autoComplete="new-password" {...field} />
+                  </Form.Control>
+                  <Form.Description>At least {PASSWORD_MIN_LENGTH} characters.</Form.Description>
+                  <Form.Message />
+                </Form.Item>
+              )}
+            />
+
+            <Form.Field
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label>Confirm password</Form.Label>
+                  <Form.Control>
+                    <Input type="password" autoComplete="new-password" {...field} />
                   </Form.Control>
                   <Form.Message />
                 </Form.Item>
@@ -112,25 +144,19 @@ export function LoginForm({ next }: { next?: string }) {
             ) : null}
 
             <Button type="submit" className="w-full" isLoading={isPending} disabled={isPending}>
-              {isPending ? 'Signing in…' : 'Sign in'}
+              {isPending ? 'Creating account…' : 'Create account'}
             </Button>
           </form>
         </Form>
       </Card.Content>
-      <Card.Footer className="flex-col gap-2 text-center text-sm text-muted-foreground">
-        <p>
-          New here?
-          <Link
-            href={signupHref}
-            className="ml-1 font-medium text-foreground underline-offset-4 hover:underline"
-          >
-            Create an account
-          </Link>
-        </p>
-        <p>
-          Demo account: <code className="mx-1 rounded bg-muted px-1.5 py-0.5">demo@shop.test</code>/{' '}
-          <code className="mx-1 rounded bg-muted px-1.5 py-0.5">Password123!</code>
-        </p>
+      <Card.Footer className="justify-center text-sm text-muted-foreground">
+        Already have an account?
+        <Link
+          href={loginHref}
+          className="ml-1 font-medium text-foreground underline-offset-4 hover:underline"
+        >
+          Sign in
+        </Link>
       </Card.Footer>
     </Card>
   );

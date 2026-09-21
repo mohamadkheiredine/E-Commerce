@@ -163,10 +163,4 @@ export const authService = {
       await authRepository.revokeFamily(record.family);
     }
   },
-
-  async me(userId: string): Promise<UserDto> {
-    const user = await authRepository.findUserById(userId);
-    if (!user) throw new UnauthenticatedError();
-    return user;
-  },
 };

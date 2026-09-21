@@ -1,6 +1,5 @@
 import type { Request, Response } from 'express';
 import type { LoginPayload, LogoutBody, RefreshBody, SignupPayload } from '@ecom/contracts';
-import { requireUser } from '../../middleware/authenticate.js';
 import { validated } from '../../middleware/validate.js';
 import { authService } from './auth.service.js';
 
@@ -31,11 +30,5 @@ export const authController = {
     const { refresh_token } = validated<LogoutBody>(req);
     await authService.logout(refresh_token);
     res.status(204).end();
-  },
-
-  async me(req: Request, res: Response): Promise<void> {
-    const user = requireUser(req);
-    const result = await authService.me(user.id);
-    res.status(200).json({ data: result });
   },
 };

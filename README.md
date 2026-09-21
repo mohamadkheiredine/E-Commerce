@@ -173,7 +173,6 @@ Base path `/api/v1`. Every response is an envelope: `{ data }` on success, `{ er
 | POST   | `/auth/login`                             |      | rate-limited; returns user + token pair                    |
 | POST   | `/auth/refresh`                           |      | rotates the pair; reuse revokes the family                 |
 | POST   | `/auth/logout`                            | ✓    | revokes the presented refresh token's family               |
-| GET    | `/auth/me`                                | ✓    |                                                            |
 | GET    | `/products`                               | ✓    | all 15, with variants                                      |
 | GET    | `/products/:slug`                         | ✓    |                                                            |
 | GET    | `/cart`                                   | ✓    | lines with resolved unit price, line total, stock          |

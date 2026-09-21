@@ -5,7 +5,6 @@ import {
   refreshBodySchema,
   signupPayloadSchema,
 } from '@ecom/contracts';
-import { authenticate } from '../../middleware/authenticate.js';
 import { loginRateLimit, refreshRateLimit, signupRateLimit } from '../../middleware/rate-limit.js';
 import { validate } from '../../middleware/validate.js';
 import { authController } from './auth.controller.js';
@@ -16,4 +15,3 @@ authRouter.post('/signup', signupRateLimit, validate(signupPayloadSchema), authC
 authRouter.post('/login', loginRateLimit, validate(loginPayloadSchema), authController.login);
 authRouter.post('/refresh', refreshRateLimit, validate(refreshBodySchema), authController.refresh);
 authRouter.post('/logout', validate(logoutBodySchema), authController.logout);
-authRouter.get('/me', authenticate, authController.me);

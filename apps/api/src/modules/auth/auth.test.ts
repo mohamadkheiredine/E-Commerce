@@ -169,29 +169,6 @@ describe('POST /api/v1/auth/login', () => {
   });
 });
 
-describe('GET /api/v1/auth/me', () => {
-  it('returns the caller for a valid access token', async () => {
-    const { access_token: accessToken } = await loginAs(TEST_USER.email, TEST_USER.password);
-    const res = await api().get('/api/v1/auth/me').set('Authorization', `Bearer ${accessToken}`);
-
-    expect(res.status).toBe(200);
-    expect(res.body.data).toMatchObject({ email: TEST_USER.email, name: TEST_USER.name });
-  });
-
-  it('rejects a missing token with UNAUTHENTICATED', async () => {
-    const res = await api().get('/api/v1/auth/me');
-    expect(res.status).toBe(401);
-    expect(res.body.error.code).toBe('UNAUTHENTICATED');
-  });
-
-  it('rejects a tampered token', async () => {
-    const { access_token: accessToken } = await loginAs(TEST_USER.email, TEST_USER.password);
-    const tampered = accessToken.slice(0, -4) + 'AAAA';
-    const res = await api().get('/api/v1/auth/me').set('Authorization', `Bearer ${tampered}`);
-    expect(res.status).toBe(401);
-  });
-});
-
 describe('POST /api/v1/auth/refresh — rotation', () => {
   it('issues a new pair and retires the presented token', async () => {
     const first = await loginAs(TEST_USER.email, TEST_USER.password);

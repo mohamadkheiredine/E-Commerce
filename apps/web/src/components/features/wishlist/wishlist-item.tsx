@@ -59,7 +59,7 @@ export function WishlistItem({ item }: { item: WishlistItemModel }) {
       </div>
 
       <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:col-start-3 sm:row-span-2 sm:flex-col sm:items-end">
-        <form action={moveAction} className="flex items-center gap-2">
+        <form action={moveAction} className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="productId" value={product.id} />
           {product.hasVariants ? (
             <select
@@ -67,7 +67,7 @@ export function WishlistItem({ item }: { item: WishlistItemModel }) {
               defaultValue={firstAvailable?.id}
               aria-label={product.variantType ?? 'Option'}
               disabled={!product.inStock || movePending}
-              className="h-9 rounded-md border bg-background px-2 text-sm disabled:opacity-60"
+              className="h-9 min-w-0 flex-1 rounded-md border bg-background px-2 text-sm disabled:opacity-60 sm:flex-none"
             >
               {product.variants.map((v) => (
                 <option key={v.id} value={v.id} disabled={!v.inStock}>
@@ -79,7 +79,7 @@ export function WishlistItem({ item }: { item: WishlistItemModel }) {
           ) : null}
           <Button
             type="submit"
-            className="h-9 gap-1.5"
+            className="h-9 shrink-0 gap-1.5"
             isLoading={movePending}
             disabled={movePending || !product.inStock}
           >

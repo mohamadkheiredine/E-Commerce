@@ -185,7 +185,6 @@ Base path `/api/v1`. Every response is an envelope: `{ data }` on success, `{ er
 | POST   | `/wishlist/items/:productId/move-to-cart` | ✓    | one operation, not add-then-remove                         |
 | POST   | `/orders`                                 | ✓    | `Idempotency-Key` header; transactional stock decrement    |
 | GET    | `/orders/:orderNumber`                    | ✓    |                                                            |
-| GET    | `/health` (no prefix)                     |      | checks the database, not just the process                  |
 
 ## Data model
 

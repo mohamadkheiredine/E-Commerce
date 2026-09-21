@@ -6,7 +6,6 @@ import { env, isTest } from './config/env.js';
 import { logger } from './lib/logger.js';
 import { requestId } from './middleware/request-id.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
-import { healthRouter } from './modules/health/health.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { productsRouter } from './modules/products/products.routes.js';
 import { cartRouter } from './modules/cart/cart.routes.js';
@@ -52,12 +51,9 @@ export function createApp(): Express {
       pinoHttp({
         logger,
         genReqId: (req) => (req as express.Request).id,
-        autoLogging: { ignore: (req) => req.url === '/health' },
       }),
     );
   }
-
-  app.use('/health', healthRouter);
 
   const api = express.Router();
   api.use('/auth', authRouter);
